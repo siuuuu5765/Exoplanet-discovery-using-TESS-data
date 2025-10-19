@@ -2,10 +2,24 @@ import { GoogleGenAI, Type, Chat } from "@google/genai";
 import { ExoplanetData } from '../types';
 import { CHATBOT_SYSTEM_INSTRUCTION } from '../constants';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
+// Vercel and other modern build tools expose frontend environment variables via `import.meta.env`.
+// The variable name MUST be prefixed with VITE_ (or another prefix depending on the tool).
+// We fall back to process.env.API_KEY for compatibility with the development environment.
+
+// Safely access import.meta.env to avoid crashing in environments where it doesn't exist.
+const viteApiKey = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env.VITE_API_KEY : undefined;
+const apiKey = viteApiKey || process.env.API_KEY;
+
+
+// Export a flag to be used by the UI to check for the API key.
+export const isApiKeySet = !!apiKey;
+
+let ai: GoogleGenAI | null = null;
+if (isApiKeySet) {
+  ai = new GoogleGenAI({ apiKey: apiKey });
+} else {
+  console.warn("API key is not set. The application will be in a degraded state.");
 }
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const exoplanetSchema = {
   type: Type.OBJECT,
@@ -60,6 +74,9 @@ const exoplanetSchema = {
 };
 
 export const getExoplanetData = async (ticId: string): Promise<ExoplanetData> => {
+  if (!ai) {
+    throw new Error("Gemini AI client is not initialized. Please check your API key.");
+  }
   try {
     const prompt = `You are a simulated TESS (Transiting Exoplanet Survey Satellite) astronomical database, optimized for an award-winning science project.
     Given the TESS Input Catalog ID (TIC ID): "${ticId}", provide detailed and scientifically plausible information about it.
@@ -94,11 +111,15 @@ export const getExoplanetData = async (ticId: string): Promise<ExoplanetData> =>
   }
 };
 
-export const createChat = (): Chat => {
-  return ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction: CHATBOT_SYSTEM_INSTRUCTION,
-    },
-  });
+export const createChat = (): Chat | null => {
+    if (!ai) {
+        console.error("Cannot create chat, Gemini AI client is not initialized.");
+        return null;
+    }
+    return ai.chats.create({
+        model: 'gemini-2.5-flash',
+        config: {
+        systemInstruction: CHATBOT_SYSTEM_INSTRUCTION,
+        },
+    });
 };
