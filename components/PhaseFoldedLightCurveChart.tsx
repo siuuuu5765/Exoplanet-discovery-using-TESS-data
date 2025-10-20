@@ -66,7 +66,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
             zeroline: false,
             range: [yDomainMin, 1.002]
         },
-        margin: { l: 60, r: 20, b: 50, t: 50 },
+        margin: { l: 60, r: 20, b: 80, t: 50 },
         legend: {
             x: 0.5,
             y: -0.25,

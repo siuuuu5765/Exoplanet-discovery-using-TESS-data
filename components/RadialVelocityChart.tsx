@@ -29,8 +29,8 @@ const RadialVelocityChart: React.FC<RadialVelocityChartProps> = ({ data }) => {
           margin={{
             top: 5,
             right: 30,
-            left: 10,
-            bottom: 20,
+            left: 30,
+            bottom: 30,
           }}
         >
           <defs>
@@ -47,15 +47,15 @@ const RadialVelocityChart: React.FC<RadialVelocityChartProps> = ({ data }) => {
             tick={{ fill: '#d1d5db' }}
             type="number"
             domain={['dataMin', 'dataMax']}
-            label={{ value: 'Time (days)', position: 'insideBottom', offset: -15, fill: '#d1d5db' }}
+            label={{ value: 'Time (days)', position: 'insideBottom', offset: -25, fill: '#d1d5db' }}
           />
           <YAxis 
             stroke="#9ca3af" 
             tick={{ fill: '#d1d5db' }}
-            label={{ value: 'Velocity (m/s)', angle: -90, position: 'insideLeft', fill: '#d1d5db', dx: -15 }}
+            label={{ value: 'Velocity (m/s)', angle: -90, position: 'insideLeft', fill: '#d1d5db', dx: -25 }}
             />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ color: '#d1d5db' }}/>
+          <Legend wrapperStyle={{ color: '#d1d5db', paddingTop: '10px' }}/>
           <Line 
             type="monotone" 
             dataKey="velocity" 

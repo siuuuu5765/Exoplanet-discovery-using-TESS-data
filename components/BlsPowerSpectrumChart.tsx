@@ -1,4 +1,3 @@
-
 // components/BlsPowerSpectrumChart.tsx
 
 import React from 'react';
@@ -32,8 +31,8 @@ const BlsPowerSpectrumChart: React.FC<BlsPowerSpectrumChartProps> = ({ data, bes
           margin={{
             top: 5,
             right: 30,
-            left: 10,
-            bottom: 20,
+            left: 30,
+            bottom: 30,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#3b4262" />
@@ -43,15 +42,15 @@ const BlsPowerSpectrumChart: React.FC<BlsPowerSpectrumChartProps> = ({ data, bes
             tick={{ fill: '#d1d5db' }}
             type="number"
             domain={['dataMin', 'dataMax']}
-            label={{ value: 'Period (days)', position: 'insideBottom', offset: -15, fill: '#d1d5db' }}
+            label={{ value: 'Period (days)', position: 'insideBottom', offset: -25, fill: '#d1d5db' }}
           />
           <YAxis 
             stroke="#9ca3af" 
             tick={{ fill: '#d1d5db' }}
-            label={{ value: 'BLS Power', angle: -90, position: 'insideLeft', fill: '#d1d5db', dx: -15 }}
+            label={{ value: 'BLS Power', angle: -90, position: 'insideLeft', fill: '#d1d5db', dx: -25 }}
             />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ color: '#d1d5db' }}/>
+          <Legend wrapperStyle={{ color: '#d1d5db', paddingTop: '10px' }}/>
           <Line 
             type="monotone" 
             dataKey="power" 
