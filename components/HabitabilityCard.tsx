@@ -1,5 +1,4 @@
 import React from 'react';
-// FIX: Corrected import path for Icons component
 import { LeafIcon } from './Icons';
 
 interface HabitabilityCardProps {

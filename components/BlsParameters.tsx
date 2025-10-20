@@ -1,9 +1,7 @@
 // components/BlsParameters.tsx
 
 import React, { useState } from 'react';
-// FIX: Corrected import path for type definition
 import type { BlsParameters } from '../types';
-// FIX: Corrected import path for Icons component
 import { SlidersIcon } from './Icons';
 
 interface BlsParametersProps {

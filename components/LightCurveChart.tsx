@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-// FIX: Corrected import path for type definition
 import type { LightCurvePoint } from '../types';
 
 interface LightCurveChartProps {

@@ -1,7 +1,5 @@
 import React from 'react';
-// FIX: Corrected import path for type definition
 import type { Chemical } from '../types';
-// FIX: Corrected import path for Icons component
 import { BeakerIcon } from './Icons';
 
 interface ChemicalCompositionProps {

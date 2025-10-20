@@ -18,7 +18,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
         x: data.map(p => p.phase),
         y: data.map(p => p.brightness),
         mode: 'markers',
-        type: 'scatter',
+        type: 'scatter' as any,
         name: 'Observed Data',
         marker: { color: '#00ffff', size: 5, opacity: 0.7 },
         hoverinfo: 'skip'
@@ -28,7 +28,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
         x: modelData.map(p => p.phase),
         y: modelData.map(p => p.brightness),
         mode: 'lines',
-        type: 'scatter',
+        type: 'scatter' as any,
         name: 'Transit Model Fit',
         line: { color: '#ef4444', width: 2.5 },
         hovertemplate: '<b>Model Fit</b><br>Phase: %{x:.3f}<br>Brightness: %{y:.4f}<extra></extra>'
@@ -83,7 +83,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
         modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d', 'toggleSpikelines']
       };
 
-      Plotly.react(chartRef.current, [observedTrace, modelTrace], layout, config);
+      Plotly.react(chartRef.current, [observedTrace as any, modelTrace as any], layout, config);
     }
   }, [data, modelData]);
 
