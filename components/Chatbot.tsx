@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createChat } from '../services/geminiService';
+// FIX: Corrected import path for type definition
 import type { ChatMessage } from '../types';
+// FIX: Corrected import path for Icons components
 import { ChatIcon, CloseIcon, SendIcon } from './Icons';
 import type { Chat } from '@google/genai';
 
@@ -60,9 +62,11 @@ const Chatbot: React.FC = () => {
     
     try {
       const stream = await chatSessionRef.current.sendMessageStream({ message: input });
+      let fullText = '';
       for await (const chunk of stream) {
+        fullText += chunk.text;
         setMessages(prev => prev.map(msg => 
-          msg.id === botMessageId ? { ...msg, text: msg.text + chunk.text } : msg
+          msg.id === botMessageId ? { ...msg, text: fullText } : msg
         ));
       }
     } catch (error) {

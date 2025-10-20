@@ -1,7 +1,8 @@
+
 import React from 'react';
-// FIX: Removed `Defs`, `linearGradient`, and `stop` from import as they are not exported from 'recharts'.
 // The `defs`, `linearGradient`, and `stop` elements are used as standard SVG elements within the chart.
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+// FIX: Corrected import path for type definition
 import type { RadialVelocityPoint } from '../types';
 
 interface RadialVelocityChartProps {

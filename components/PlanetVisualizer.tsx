@@ -27,7 +27,7 @@ const PlanetVisualizer: React.FC<PlanetVisualizerProps> = ({ planetName, planetR
   const orbitSize = 200 + planetSize; // Adjust orbit size based on planet
 
   return (
-    <div className="bg-space-blue/50 p-6 rounded-xl shadow-lg border border-space-light backdrop-blur-sm text-center">
+    <div className="text-center">
       <h3 className="text-xl font-bold font-display text-accent-cyan mb-4">System Visualizer</h3>
       <div className="flex justify-center items-center my-4 h-48">
         <div
