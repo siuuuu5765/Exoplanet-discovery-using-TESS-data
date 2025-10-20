@@ -95,16 +95,10 @@ export const generatePresentation = (analysis: PlanetAnalysis) => {
     // --- Final Slide ---
     const finalSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
     finalSlide.addText("TESS Exoplanet Discovery Hub", {
-        x: 0, y: 2.5, w: '100%', h: 1,
+        x: 0, y: 3.0, w: '100%', h: 1,
         fontSize: 36,
         bold: true,
         color: '00BFFF',
-        align: 'center'
-    });
-     finalSlide.addText("ISEF 2024 Advanced Project Edition", {
-        x: 0, y: 3.5, w: '100%', h: 1,
-        fontSize: 20,
-        color: 'FFD700',
         align: 'center'
     });
 

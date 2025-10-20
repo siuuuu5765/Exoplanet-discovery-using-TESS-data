@@ -1,141 +1,146 @@
 // types.ts
 
-export interface ValueWithUncertainty {
-  value: number;
-  uncertainty: number;
-}
-
+// Basic data point for a light curve
 export interface LightCurvePoint {
-  time: number;
-  brightness: number;
+  time: number; // in hours
+  brightness: number; // normalized
 }
 
+// Data point for radial velocity
 export interface RadialVelocityPoint {
-  time: number;
-  velocity: number;
+  time: number; // in days
+  velocity: number; // in m/s
 }
 
-export interface BlsResultPoint {
-  period: number;
-  power: number;
-}
-
-export interface PhaseFoldedPoint {
-  phase: number;
-  brightness: number;
-}
-
+// A single chemical element in an atmosphere
 export interface Chemical {
   chemical: string;
   percentage: number;
 }
 
-export interface AtmosphericData {
-  pressure: number; // in bars
-  composition: Chemical[];
+// Parameters for Box-fitting Least Squares algorithm
+export interface BlsParameters {
+    periodRange: [number, number];
+    depthThreshold: number;
+    snrCutoff: number;
 }
 
-export interface FeatureImportance {
-  feature: 'period' | 'depth' | 'duration' | 'snr';
-  score: number;
+// Data point for BLS power spectrum
+export interface BlsResultPoint {
+    period: number;
+    power: number;
 }
 
-export interface ClassificationPrediction {
-  class: 'Planet Candidate' | 'Eclipsing Binary' | 'Stellar Variability' | 'Noise';
-  confidence: number;
+// Data point for phase-folded light curve
+export interface PhaseFoldedPoint {
+    phase: number;
+    brightness: number;
 }
 
-export interface ClassifierOutput {
-  bestGuess: string;
-  predictions: ClassificationPrediction[];
-  featureImportance?: FeatureImportance[];
-}
-
-export interface MachineLearningClassification {
-  cnn: ClassifierOutput;
-  randomForest: ClassifierOutput;
-}
-
-export interface HabitabilityData {
-  score: number;
-  inHabitableZone: boolean;
-}
-
+// Parameters from the transit model fit
 export interface TransitFitParams {
-  depth: number;
-  duration: number; // hours
-  impactParameter: number;
-  epoch: number; // BJD
+    depth: number;
+    duration: number;
+    impactParameter: number;
+    epoch: number;
 }
 
-export interface DetectionData {
-  blsPeriod: ValueWithUncertainty;
-  snr: number;
-  powerSpectrum: BlsResultPoint[];
-  phaseFoldedLightCurve: PhaseFoldedPoint[];
-  transitFitModel: PhaseFoldedPoint[];
-  transitFitParams: TransitFitParams;
+// For ML Classifier: individual prediction
+export interface ClassificationPrediction {
+    class: string;
+    confidence: number;
 }
 
-export interface PlanetData {
-  name: string;
-  radius: ValueWithUncertainty;
-  mass: ValueWithUncertainty;
-  period: ValueWithUncertainty;
-  temperature: number; // Kelvin
+// For ML Classifier: feature importance
+export interface FeatureImportance {
+    feature: string;
+    score: number;
 }
 
-export interface StarData {
-  name: string;
-  type: string;
-  apparentMagnitude: number;
-  distance: number; // light-years
+// For ML Classifier: output of one model
+export interface ClassifierOutput {
+    bestGuess: string;
+    predictions: ClassificationPrediction[];
+    featureImportance?: FeatureImportance[];
 }
 
-export interface VerificationStatus {
-  status: 'Known Planet' | 'New Candidate';
-  knownName?: string;
-  archiveUrl: string;
+// For data source comparison
+export interface ComparisonData {
+    property: string;
+    value: string;
+    source: 'Gemini' | 'Archive';
 }
 
+// Represents a value with uncertainty
+export interface Measurement {
+    value: number;
+    uncertainty: number;
+}
+
+// The main analysis object
 export interface PlanetAnalysis {
   ticId: string;
-  planet: PlanetData;
-  star: StarData;
   lightCurve: LightCurvePoint[];
   radialVelocityCurve: RadialVelocityPoint[];
-  atmosphere: AtmosphericData | null;
-  habitability: HabitabilityData;
-  detection: DetectionData;
-  classification: MachineLearningClassification;
-  verification: VerificationStatus;
-  researchSummary: string;
-  researchAbstract: string; // New field for the abstract
+  detection: {
+    blsPeriod: Measurement;
+    blsPowerSpectrum: BlsResultPoint[];
+    phaseFoldedLightCurve: PhaseFoldedPoint[];
+    transitFitModel: PhaseFoldedPoint[];
+    transitFitParameters: TransitFitParams;
+  };
+  star: {
+    name: string;
+    type: string;
+    apparentMagnitude: number;
+    distance: number;
+  };
+  planet: {
+    name: string;
+    period: Measurement;
+    radius: Measurement;
+    mass: Measurement;
+    temperature: number; // in Kelvin
+  };
+  atmosphere: {
+    composition: Chemical[];
+    description: string;
+  };
+  habitability: {
+    score: number; // out of 10
+    inHabitableZone: boolean;
+    summary: string;
+  };
+  classification: {
+      cnn: ClassifierOutput;
+      randomForest: ClassifierOutput;
+  };
+  research: {
+      abstract: string;
+      summary: string;
+  };
+  comparisonData: ComparisonData[];
 }
 
+// For chat messages
 export interface ChatMessage {
   id: string;
   role: 'user' | 'model' | 'system';
   content: string;
 }
 
-export interface BlsParameters {
-  periodRange: [number, number];
-  depthThreshold: number;
-  snrCutoff: number;
+// For batch analysis results
+export interface BatchResult {
+    ticId: string;
+    status: 'success' | 'error';
+    classification?: PlanetAnalysis['classification'];
+    detection?: PlanetAnalysis['detection'];
 }
 
+// For injection-recovery tests
 export interface InjectionResult {
     injectedPeriod: number;
     injectedDepth: number;
     recovered: boolean;
     recoveredPeriod?: number;
-}
-
-export type BatchResult = (PlanetAnalysis & { status: 'success' }) | { ticId: string; status: 'error'; message: string };
-
-export interface ComparisonData {
-    property: string;
-    value: string;
-    source: 'Gemini' | 'TESS Archive';
 }

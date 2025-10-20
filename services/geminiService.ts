@@ -1,71 +1,319 @@
 // services/geminiService.ts
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import type { ChatMessage, PlanetAnalysis } from '../types';
+import { GoogleGenAI, Chat, GenerateContentResponse, Type } from '@google/genai';
+import type { ChatMessage, PlanetAnalysis, BlsParameters } from '../types';
 
-// FIX: Initialize the GoogleGenAI client according to guidelines.
-const apiKey = process.env.API_KEY || (import.meta.env && import.meta.env.VITE_API_KEY);
+// FIX: Initialize the GoogleGenAI client.
+const apiKey = (import.meta.env && import.meta.env.VITE_API_KEY) || process.env.API_KEY;
+
+if (!apiKey) {
+    throw new Error("API key is not available. Please check your environment variables.");
+}
+
+// FIX: Create a single instance of GoogleGenAI.
 const ai = new GoogleGenAI({ apiKey });
 
-// FIX: Expose the models API for specific use cases like injection-recovery tests.
+// FIX: Export a function to get the models API for various uses.
 export const getAiModels = () => {
     return ai.models;
 };
 
-const generateSystemInstruction = (analysis?: PlanetAnalysis): string => {
-    let instruction = `You are TESS-a, an expert AI assistant specializing in exoplanet data from NASA's TESS mission. Your purpose is to help users understand the provided analysis results. Be concise, helpful, and use a slightly futuristic, scientific tone. The user has just analyzed a star system.`;
-
-    if (analysis) {
-        instruction += ` Here is a summary of the current analysis for TIC ${analysis.ticId}:\n`;
-        instruction += `- Planet Candidate: ${analysis.planet.name}\n`;
-        instruction += `- Orbital Period: ${analysis.planet.period.value.toFixed(2)} days\n`;
-        instruction += `- Planet Radius: ${analysis.planet.radius.value.toFixed(2)} Earth radii\n`;
-        instruction += `- ML Classification: The primary classification is '${analysis.classification.cnn.bestGuess}'.\n`;
-        instruction += `Focus your answers on this specific dataset unless the user asks for general information.`;
-    } else {
-        instruction += ` There is no specific planet data loaded yet. Answer general questions about TESS, exoplanets, and this application's features.`;
-    }
-    return instruction;
-};
-
-let chat: Chat | null = null;
-let lastAnalysisContext: string | null = null;
-let currentAnalysisForChat: PlanetAnalysis | null = null;
-
-// FIX: Add a function to set the analysis context for the chatbot from other components.
-export const setChatbotContext = (analysis: PlanetAnalysis | null) => {
-    currentAnalysisForChat = analysis;
-    chat = null; // Force chat reset on context change
-};
-
-// FIX: Implement the function to send messages to the Gemini chatbot.
+// FIX: Function to handle chatbot messaging logic.
 export const sendMessageToChatbot = async (message: string, history: ChatMessage[]): Promise<string> => {
-    const analysisContext = currentAnalysisForChat ? JSON.stringify(currentAnalysisForChat.ticId) : null;
-
-    // Reset chat if the context (the analyzed planet) has changed
-    if (!chat || lastAnalysisContext !== analysisContext) {
-        const systemInstruction = generateSystemInstruction(currentAnalysisForChat);
-        const chatHistory = history
-            .filter(m => m.role === 'user' || m.role === 'model')
-            .map(m => ({
+    try {
+        // We'll create a new chat session for each message to pass the history.
+        const dynamicChat = ai.chats.create({
+            model: 'gemini-2.5-pro',
+            history: history.filter(m => m.role !== 'system').map(m => ({
                 role: m.role,
                 parts: [{ text: m.content }]
-            }));
-        
-        chat = ai.chats.create({
-            model: 'gemini-2.5-flash',
+            })),
             config: {
-                systemInstruction,
-            },
-            history: chatHistory
+                systemInstruction: "You are TESS-a, an expert AI assistant for the TESS Exoplanet Discovery Hub. Your role is to help users understand exoplanet data. Be concise, friendly, and knowledgeable about astronomy, the TESS mission, and data analysis concepts like light curves, radial velocity, and machine learning classifiers. Do not answer questions unrelated to these topics."
+            }
         });
-        lastAnalysisContext = analysisContext;
+        
+        const response: GenerateContentResponse = await dynamicChat.sendMessage({ message });
+        return response.text;
+    } catch (error) {
+        console.error('Error sending message to chatbot:', error);
+        return 'I am sorry, but I encountered an error while processing your request. Please try again later.';
     }
+};
+
+// FIX: Define the full schema for the planet analysis.
+const planetAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        ticId: { type: Type.STRING },
+        lightCurve: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    time: { type: Type.NUMBER },
+                    brightness: { type: Type.NUMBER },
+                },
+                required: ['time', 'brightness'],
+            },
+        },
+        radialVelocityCurve: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    time: { type: Type.NUMBER },
+                    velocity: { type: Type.NUMBER },
+                },
+                required: ['time', 'velocity'],
+            },
+        },
+        detection: {
+            type: Type.OBJECT,
+            properties: {
+                blsPeriod: {
+                    type: Type.OBJECT,
+                    properties: {
+                        value: { type: Type.NUMBER },
+                        uncertainty: { type: Type.NUMBER },
+                    },
+                    required: ['value', 'uncertainty'],
+                },
+                blsPowerSpectrum: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            period: { type: Type.NUMBER },
+                            power: { type: Type.NUMBER },
+                        },
+                        required: ['period', 'power'],
+                    },
+                },
+                phaseFoldedLightCurve: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            phase: { type: Type.NUMBER },
+                            brightness: { type: Type.NUMBER },
+                        },
+                        required: ['phase', 'brightness'],
+                    },
+                },
+                transitFitModel: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            phase: { type: Type.NUMBER },
+                            brightness: { type: Type.NUMBER },
+                        },
+                        required: ['phase', 'brightness'],
+                    },
+                },
+                transitFitParameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        depth: { type: Type.NUMBER },
+                        duration: { type: Type.NUMBER },
+                        impactParameter: { type: Type.NUMBER },
+                        epoch: { type: Type.NUMBER },
+                    },
+                    required: ['depth', 'duration', 'impactParameter', 'epoch'],
+                },
+            },
+            required: ['blsPeriod', 'blsPowerSpectrum', 'phaseFoldedLightCurve', 'transitFitModel', 'transitFitParameters'],
+        },
+        star: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING },
+                type: { type: Type.STRING },
+                apparentMagnitude: { type: Type.NUMBER },
+                distance: { type: Type.NUMBER },
+            },
+            required: ['name', 'type', 'apparentMagnitude', 'distance'],
+        },
+        planet: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING },
+                period: {
+                    type: Type.OBJECT,
+                    properties: {
+                        value: { type: Type.NUMBER },
+                        uncertainty: { type: Type.NUMBER },
+                    },
+                    required: ['value', 'uncertainty'],
+                },
+                radius: {
+                    type: Type.OBJECT,
+                    properties: {
+                        value: { type: Type.NUMBER },
+                        uncertainty: { type: Type.NUMBER },
+                    },
+                    required: ['value', 'uncertainty'],
+                },
+                mass: {
+                    type: Type.OBJECT,
+                    properties: {
+                        value: { type: Type.NUMBER },
+                        uncertainty: { type: Type.NUMBER },
+                    },
+                    required: ['value', 'uncertainty'],
+                },
+                temperature: { type: Type.NUMBER },
+            },
+            required: ['name', 'period', 'radius', 'mass', 'temperature'],
+        },
+        atmosphere: {
+            type: Type.OBJECT,
+            properties: {
+                composition: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            chemical: { type: Type.STRING },
+                            percentage: { type: Type.NUMBER },
+                        },
+                        required: ['chemical', 'percentage'],
+                    },
+                },
+                description: { type: Type.STRING },
+            },
+            required: ['composition', 'description'],
+        },
+        habitability: {
+            type: Type.OBJECT,
+            properties: {
+                score: { type: Type.NUMBER },
+                inHabitableZone: { type: Type.BOOLEAN },
+                summary: { type: Type.STRING },
+            },
+            required: ['score', 'inHabitableZone', 'summary'],
+        },
+        classification: {
+            type: Type.OBJECT,
+            properties: {
+                cnn: {
+                    type: Type.OBJECT,
+                    properties: {
+                        bestGuess: { type: Type.STRING },
+                        predictions: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    class: { type: Type.STRING },
+                                    confidence: { type: Type.NUMBER },
+                                },
+                                required: ['class', 'confidence'],
+                            },
+                        },
+                    },
+                    required: ['bestGuess', 'predictions'],
+                },
+                randomForest: {
+                    type: Type.OBJECT,
+                    properties: {
+                        bestGuess: { type: Type.STRING },
+                        predictions: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    class: { type: Type.STRING },
+                                    confidence: { type: Type.NUMBER },
+                                },
+                                required: ['class', 'confidence'],
+                            },
+                        },
+                        featureImportance: {
+                             type: Type.ARRAY,
+                             items: {
+                                 type: Type.OBJECT,
+                                 properties: {
+                                     feature: { type: Type.STRING },
+                                     score: { type: Type.NUMBER },
+                                 },
+                                required: ['feature', 'score']
+                             }
+                        }
+                    },
+                    required: ['bestGuess', 'predictions', 'featureImportance'],
+                },
+            },
+            required: ['cnn', 'randomForest'],
+        },
+        research: {
+            type: Type.OBJECT,
+            properties: {
+                abstract: { type: Type.STRING },
+                summary: { type: Type.STRING },
+            },
+            required: ['abstract', 'summary'],
+        },
+        comparisonData: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    property: { type: Type.STRING },
+                    value: { type: Type.STRING },
+                    source: { type: Type.STRING },
+                },
+                required: ['property', 'value', 'source'],
+            },
+        },
+    },
+    required: [
+        'ticId', 'lightCurve', 'radialVelocityCurve', 'detection', 'star', 'planet',
+        'atmosphere', 'habitability', 'classification', 'research', 'comparisonData'
+    ],
+};
+
+
+// FIX: Function to fetch and analyze data for a given TIC ID.
+export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParameters): Promise<PlanetAnalysis> => {
+
+    const systemInstruction = `You are a scientific data simulation and analysis engine. Your task is to act as the backend for the TESS Exoplanet Discovery Hub.
+    When given a TESS Input Catalog (TIC) ID, you must:
+    1.  **Simulate Realistic Data**: Generate a full JSON object that simulates the output of a comprehensive exoplanet detection and analysis pipeline. This includes light curve data, radial velocity data, signal detection results (BLS), transit fitting, stellar and planetary parameters, atmospheric composition, habitability assessment, and machine learning classification results.
+    2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema. Do not add extra properties or explanations. The entire response must be a single, parsable JSON object.
+    3.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, try to reflect their known characteristics. For other TIC IDs or mock requests, generate creative but realistic scenarios (e.g., hot Jupiters, Earth-like worlds, eclipsing binaries misclassified as planets).
+    4.  **Incorporate User Parameters**: Use the provided Box-fitting Least Squares (BLS) parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
+    5.  **Create Research Summary**: Write a concise, professional, scientific-style abstract and a longer summary about the findings for the target.
+    6.  **Compare Data Sources**: Populate the 'comparisonData' with a few key parameters, comparing your generated 'Gemini' data with plausible 'Archive' data (e.g., from MAST or ExoFOP).
+    7.  **Classification**: The 'classification' section should contain results from two models: a 1D CNN and a Random Forest. Provide confidence scores for different classes (Planet Candidate, Eclipsing Binary, Stellar Variability, Noise).
+    The goal is to provide a rich, detailed, and scientifically sound dataset for the user to explore in the application.`;
+
+    const prompt = `
+    Generate a complete exoplanet analysis JSON object for TIC ID: ${ticId}.
+    Use the following BLS parameters to guide the signal detection simulation:
+    - Period Range: ${blsParams.periodRange[0]} to ${blsParams.periodRange[1]} days
+    - Depth Threshold: ${blsParams.depthThreshold}
+    - SNR Cutoff: ${blsParams.snrCutoff}
+    
+    Ensure the output is a single, valid JSON object that strictly adheres to the schema.
+    `;
 
     try {
-        const result: GenerateContentResponse = await chat.sendMessage({ message });
-        return result.text;
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: planetAnalysisSchema,
+                systemInstruction: systemInstruction,
+            },
+        });
+        
+        const jsonText = response.text.trim();
+        const analysisResult: PlanetAnalysis = JSON.parse(jsonText);
+        return analysisResult;
     } catch (error) {
-        console.error("Error sending message to chatbot:", error);
-        return "I'm sorry, I encountered an issue while processing your request. Please try again.";
+        console.error(`Error analyzing TIC ID ${ticId}:`, error);
+        throw new Error('Failed to retrieve or parse analysis data from the AI model.');
     }
 };
