@@ -38,7 +38,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
 
       const layout: Partial<Plotly.Layout> = {
         title: {
-            text: 'Phase-Folded Light Curve & Model Fit',
+            text: 'Phase-Folded Host Star Brightness & Transit Model',
             font: {
                 family: 'Orbitron, sans-serif',
                 size: 18,
@@ -60,7 +60,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
             range: [-0.5, 0.5]
         },
         yaxis: {
-            title: 'Normalized Brightness',
+            title: 'Host Star Brightness (Normalized)',
             gridcolor: '#3b4262',
             linecolor: '#9ca3af',
             zeroline: false,

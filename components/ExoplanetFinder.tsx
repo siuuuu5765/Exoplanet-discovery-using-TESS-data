@@ -24,6 +24,7 @@ import InjectionRecovery from './InjectionRecovery';
 import BayesianOptimization from './BayesianOptimization';
 import MlPerformanceMetrics from './MlPerformanceMetrics';
 import Chatbot from './Chatbot';
+import TransitDetailChart from './TransitDetailChart'; // Import the new component
 
 // FIX: The main component for finding and displaying exoplanet data.
 const ExoplanetFinder: React.FC = () => {
@@ -109,11 +110,25 @@ const ExoplanetFinder: React.FC = () => {
                     {/* Signal Analysis Section */}
                      <div className="p-4 rounded-lg bg-space-blue/30 border border-space-light/50">
                         <h2 className="text-2xl font-display text-accent-gold tracking-wider text-center mb-4">Signal Detection & Analysis</h2>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <LightCurveChart data={analysisResult.lightCurve} period={analysisResult.detection.blsPeriod.value} />
-                            <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
-                            <PhaseFoldedLightCurveChart data={analysisResult.detection.phaseFoldedLightCurve} modelData={analysisResult.detection.transitFitModel} />
-                             <div className="flex flex-col gap-4">
+                         <div className="space-y-8">
+                            <LightCurveChart 
+                                data={analysisResult.lightCurve} 
+                                period={analysisResult.detection.blsPeriod.value}
+                                epoch={analysisResult.detection.transitFitParameters.epoch}
+                                duration={analysisResult.detection.transitFitParameters.duration}
+                            />
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
+                                <PhaseFoldedLightCurveChart data={analysisResult.detection.phaseFoldedLightCurve} modelData={analysisResult.detection.transitFitModel} />
+                            </div>
+                             <TransitDetailChart
+                                lightCurve={analysisResult.lightCurve}
+                                period={analysisResult.detection.blsPeriod.value}
+                                epoch={analysisResult.detection.transitFitParameters.epoch}
+                                duration={analysisResult.detection.transitFitParameters.duration}
+                                modelData={analysisResult.detection.transitFitModel}
+                            />
+                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <TransitFitParameters params={analysisResult.detection.transitFitParameters}/>
                                 <DetrendingInfoCard />
                             </div>
