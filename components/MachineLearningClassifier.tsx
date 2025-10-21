@@ -30,6 +30,7 @@ const ConfidenceBars: React.FC<{ predictions: ClassificationPrediction[] }> = ({
         </div>
       </div>
     ))}
+    <p className="text-right text-xs text-gray-400 mt-2 pr-1">Model Confidence (%) →</p>
   </div>
 );
 
@@ -42,7 +43,7 @@ const FeatureImportanceChart: React.FC<{ features: FeatureImportance[] }> = ({ f
         <div className="space-y-2">
             {features.sort((a, b) => b.score - a.score).map(feature => (
                 <div key={feature.feature} className="flex items-center text-xs">
-                    <span className="w-16 font-medium text-gray-300 capitalize">{feature.feature}</span>
+                    <span className="w-24 font-medium text-gray-300 capitalize">{feature.feature}</span>
                     <div className="flex-1 bg-space-light rounded-full h-4">
                         <div 
                             className="bg-accent-magenta h-4 rounded-full text-right pr-2 text-black font-bold"
@@ -54,6 +55,7 @@ const FeatureImportanceChart: React.FC<{ features: FeatureImportance[] }> = ({ f
                 </div>
             ))}
         </div>
+        <p className="text-right text-xs text-gray-400 mt-2 pr-1">Importance Score (%) →</p>
     </div>
 );
 

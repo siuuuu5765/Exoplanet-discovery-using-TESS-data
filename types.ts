@@ -135,6 +135,7 @@ export interface BatchResult {
     status: 'success' | 'error';
     classification?: PlanetAnalysis['classification'];
     detection?: PlanetAnalysis['detection'];
+    planet?: PlanetAnalysis['planet'];
 }
 
 // For injection-recovery tests

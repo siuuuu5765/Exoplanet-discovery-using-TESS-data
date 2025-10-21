@@ -1,9 +1,10 @@
 // services/geminiService.ts
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from '@google/genai';
-import type { ChatMessage, PlanetAnalysis, BlsParameters } from '../types';
+import type { ChatMessage, PlanetAnalysis, BlsParameters, BatchResult } from '../types';
 
 // FIX: Initialize the GoogleGenAI client.
-const apiKey = (import.meta.env && import.meta.env.VITE_API_KEY) || process.env.API_KEY;
+// FIX: Use process.env.API_KEY exclusively as per Gemini API guidelines.
+const apiKey = process.env.API_KEY;
 
 if (!apiKey) {
     throw new Error("API key is not available. Please check your environment variables.");
@@ -28,7 +29,7 @@ export const sendMessageToChatbot = async (message: string, history: ChatMessage
                 parts: [{ text: m.content }]
             })),
             config: {
-                systemInstruction: "You are TESS-a, an expert AI assistant for the TESS Exoplanet Discovery Hub. Your role is to help users understand exoplanet data. Be concise, friendly, and knowledgeable about astronomy, the TESS mission, and data analysis concepts like light curves, radial velocity, and machine learning classifiers. Do not answer questions unrelated to these topics."
+                systemInstruction: "You are TESS-a, a friendly guide to the stars for the TESS Exoplanet Discovery Hub. Your mission is to explain complex space topics in simple, easy-to-understand language. Imagine you're talking to someone who is new to astronomy. Use analogies, avoid jargon where possible, and keep your answers clear and encouraging. Stick to topics about exoplanets, stars, the TESS mission, and the data shown in the app. If asked something unrelated, politely steer the conversation back to space."
             }
         });
         
@@ -316,4 +317,99 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
         console.error(`Error analyzing TIC ID ${ticId}:`, error);
         throw new Error('Failed to retrieve or parse analysis data from the AI model.');
     }
+};
+
+
+const batchAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        ticId: { type: Type.STRING },
+        detection: {
+            type: Type.OBJECT,
+            properties: {
+                blsPeriod: {
+                    type: Type.OBJECT,
+                    properties: {
+                        value: { type: Type.NUMBER },
+                        uncertainty: { type: Type.NUMBER }
+                    },
+                    required: ['value', 'uncertainty']
+                }
+            },
+            required: ['blsPeriod']
+        },
+        classification: {
+            type: Type.OBJECT,
+            properties: {
+                cnn: {
+                    type: Type.OBJECT,
+                    properties: {
+                        bestGuess: { type: Type.STRING }
+                    },
+                    required: ['bestGuess']
+                },
+                 randomForest: {
+                    type: Type.OBJECT,
+                    properties: {
+                        bestGuess: { type: Type.STRING }
+                    },
+                    required: ['bestGuess']
+                }
+            },
+            required: ['cnn', 'randomForest']
+        },
+        planet: {
+            type: Type.OBJECT,
+            properties: {
+                radius: {
+                    type: Type.OBJECT,
+                    properties: { value: { type: Type.NUMBER } },
+                    required: ['value']
+                },
+                mass: {
+                    type: Type.OBJECT,
+                    properties: { value: { type: Type.NUMBER } },
+                    required: ['value']
+                },
+                temperature: { type: Type.NUMBER }
+            },
+            required: ['radius', 'mass', 'temperature']
+        }
+    },
+    required: ['ticId', 'detection', 'classification', 'planet']
+};
+
+type BatchAnalysisData = Pick<PlanetAnalysis, 'ticId' | 'detection' | 'classification' | 'planet'>;
+
+export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParameters): Promise<BatchAnalysisData> => {
+     const systemInstruction = `You are a scientific data simulation engine for batch processing. Given a TESS Input Catalog (TIC) ID, you must simulate ONLY the detection, classification, and core planet parameters (radius, mass, temperature).
+    1.  **Simulate Core Data**: Generate a JSON object containing only the 'ticId', 'detection', 'classification', and 'planet' fields.
+    2.  **Adhere to Schema**: The output MUST strictly conform to the provided lightweight JSON schema.
+    3.  **Incorporate User Parameters**: Use the provided Box-fitting Least Squares (BLS) parameters to inform the 'detection' simulation.
+    4.  **Efficiency**: This is for a batch job, so be quick and efficient. Do not generate extraneous data like light curves, research summaries, etc.
+    The goal is to quickly classify a list of targets and get their key physical parameters for comparison.`;
+
+    const prompt = `
+    Generate a lightweight exoplanet analysis JSON object for TIC ID: ${ticId}.
+    Use the following BLS parameters to guide the signal detection simulation:
+    - Period Range: ${blsParams.periodRange[0]} to ${blsParams.periodRange[1]} days
+    - Depth Threshold: ${blsParams.depthThreshold}
+    - SNR Cutoff: ${blsParams.snrCutoff}
+    
+    Ensure the output is a single, valid JSON object that strictly adheres to the schema.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: batchAnalysisSchema,
+            systemInstruction: systemInstruction,
+        },
+    });
+    
+    const jsonText = response.text.trim();
+    const analysisResult: BatchAnalysisData = JSON.parse(jsonText);
+    return analysisResult;
 };

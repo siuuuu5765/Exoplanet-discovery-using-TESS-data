@@ -1,11 +1,12 @@
 // components/ExoplanetFinder.tsx
 import React, { useState } from 'react';
-import { fetchAndAnalyzeTicData } from '../services/geminiService';
+import { fetchAndAnalyzeTicData, analyzeTicIdForBatch } from '../services/geminiService';
 import { generateMockAnalysis } from '../services/mockData';
 import { exportAnalysisToJSON, exportAnalysisToCSV } from '../services/exportService';
 import { generatePdfReport } from '../services/pdfGenerator';
 import { generatePresentation } from '../services/presentationPackService';
-import type { PlanetAnalysis, BlsParameters } from '../types';
+import { generateResearchReport } from '../services/reportGenerator';
+import type { PlanetAnalysis, BlsParameters, BatchResult } from '../types';
 import LightCurveChart from './LightCurveChart';
 import PlanetVisualizer from './PlanetVisualizer';
 import PlanetProfileCard from './PlanetProfileCard';
@@ -25,6 +26,10 @@ import BayesianOptimization from './BayesianOptimization';
 import MlPerformanceMetrics from './MlPerformanceMetrics';
 import Chatbot from './Chatbot';
 import TransitDetailChart from './TransitDetailChart'; // Import the new component
+import BatchAnalysis from './BatchAnalysis';
+import BatchResultsTable from './BatchResultsTable';
+import ResearchReportModal from './ResearchReportModal';
+
 
 // FIX: The main component for finding and displaying exoplanet data.
 const ExoplanetFinder: React.FC = () => {
@@ -37,6 +42,12 @@ const ExoplanetFinder: React.FC = () => {
         depthThreshold: 0.001,
         snrCutoff: 7.0,
     });
+    const [isBatchRunning, setIsBatchRunning] = useState(false);
+    const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
+    const [batchProgress, setBatchProgress] = useState('');
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportMarkdown, setReportMarkdown] = useState('');
+
 
     const handleFetchData = async (idToFetch: string) => {
         if (!idToFetch) return;
@@ -44,6 +55,7 @@ const ExoplanetFinder: React.FC = () => {
         setIsLoading(true);
         setError(null);
         setAnalysisResult(null);
+        setBatchResults([]);
 
         try {
             let result: PlanetAnalysis;
@@ -65,6 +77,61 @@ const ExoplanetFinder: React.FC = () => {
         handleFetchData(selectedTicId);
     };
 
+    const handleRunBatch = async (ticIdsInput: string) => {
+        const ticIds = ticIdsInput.trim().split(/\s+/).filter(id => id);
+        if (ticIds.length === 0) return;
+
+        setIsBatchRunning(true);
+        setBatchResults([]);
+        setBatchProgress('');
+        setError(null);
+        setAnalysisResult(null);
+
+        const results: BatchResult[] = [];
+
+        for (let i = 0; i < ticIds.length; i++) {
+            const currentTicId = ticIds[i];
+            setBatchProgress(`Analyzing ${i + 1} of ${ticIds.length}: ${currentTicId}`);
+            try {
+                if (currentTicId.toLowerCase() === 'mock') {
+                    // Create a mock batch result
+                    const mockAnalysis = generateMockAnalysis(currentTicId);
+                    results.push({
+                        ticId: currentTicId,
+                        status: 'success',
+                        detection: mockAnalysis.detection,
+                        classification: mockAnalysis.classification,
+                        planet: mockAnalysis.planet,
+                    });
+                } else {
+                    const result = await analyzeTicIdForBatch(currentTicId, blsParams);
+                    results.push({
+                        ticId: currentTicId,
+                        status: 'success',
+                        detection: result.detection,
+                        classification: result.classification,
+                        planet: result.planet,
+                    });
+                }
+            } catch (err) {
+                console.error(`Error processing TIC ID ${currentTicId} in batch:`, err);
+                results.push({ ticId: currentTicId, status: 'error' });
+            } finally {
+                setBatchResults([...results]);
+            }
+        }
+
+        setBatchProgress('Batch complete!');
+        setIsBatchRunning(false);
+    };
+
+    const handleGenerateReport = () => {
+        if (!analysisResult) return;
+        const markdown = generateResearchReport(analysisResult);
+        setReportMarkdown(markdown);
+        setIsReportModalOpen(true);
+    };
+
     return (
         <div className="container mx-auto">
             <div className="max-w-xl mx-auto bg-space-blue/50 p-4 rounded-lg shadow-lg border border-space-light backdrop-blur-sm">
@@ -75,19 +142,27 @@ const ExoplanetFinder: React.FC = () => {
                         onChange={(e) => setTicId(e.target.value)}
                         placeholder="Enter TESS Input Catalog (TIC) ID..."
                         className="flex-1 bg-space-dark p-3 rounded-l-md border-0 focus:ring-2 focus:ring-accent-magenta outline-none"
-                        disabled={isLoading}
+                        disabled={isLoading || isBatchRunning}
                     />
                     <button
                         onClick={() => handleFetchData(ticId)}
-                        disabled={isLoading}
+                        disabled={isLoading || isBatchRunning}
                         className="bg-accent-magenta text-white font-bold py-3 px-6 rounded-r-md hover:bg-accent-magenta/80 transition-colors disabled:opacity-50"
                     >
-                        {isLoading ? 'Analyzing...' : 'Analyze'}
+                        {isLoading ? 'Analyzing...' : isBatchRunning ? 'Batch Running...' : 'Analyze'}
                     </button>
                 </div>
-                <BlsParametersComponent params={blsParams} setParams={setBlsParams} disabled={isLoading} />
-                <PlanetSelector onSelect={handleSelectTarget} disabled={isLoading} />
+                <BlsParametersComponent params={blsParams} setParams={setBlsParams} disabled={isLoading || isBatchRunning} />
+                <PlanetSelector onSelect={handleSelectTarget} disabled={isLoading || isBatchRunning} />
             </div>
+
+            <BatchAnalysis 
+                onRunBatch={handleRunBatch}
+                disabled={isLoading || isBatchRunning}
+                progress={batchProgress}
+            />
+            <BatchResultsTable results={batchResults} />
+
 
             {error && <p className="text-center text-red-400 mt-4 animate-fade-in">{error}</p>}
             
@@ -158,15 +233,23 @@ const ExoplanetFinder: React.FC = () => {
 
 
                     {/* Export Buttons */}
-                    <div className="text-center pt-4 space-x-2">
+                    <div className="text-center pt-4 space-x-2 flex flex-wrap justify-center gap-2">
                          <button onClick={() => exportAnalysisToJSON(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Export to JSON</button>
                          <button onClick={() => exportAnalysisToCSV(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Export to CSV</button>
                          <button onClick={() => generatePdfReport(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Generate PDF Report</button>
                          <button onClick={() => generatePresentation(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Generate Presentation</button>
+                         <button onClick={handleGenerateReport} className="bg-accent-gold text-space-dark font-semibold py-2 px-4 rounded-md">Generate Research Report</button>
                     </div>
 
                     <Chatbot />
                 </div>
+            )}
+            
+            {isReportModalOpen && (
+                <ResearchReportModal 
+                    reportMarkdown={reportMarkdown}
+                    onClose={() => setIsReportModalOpen(false)}
+                />
             )}
         </div>
     );
