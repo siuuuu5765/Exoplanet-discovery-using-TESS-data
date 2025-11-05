@@ -30,12 +30,8 @@ import BatchAnalysis from './BatchAnalysis';
 import BatchResultsTable from './BatchResultsTable';
 import ResearchReportModal from './ResearchReportModal';
 
-interface ExoplanetFinderProps {
-    onApiKeyError: () => void;
-}
-
 // FIX: The main component for finding and displaying exoplanet data.
-const ExoplanetFinder: React.FC<ExoplanetFinderProps> = ({ onApiKeyError }) => {
+const ExoplanetFinder: React.FC = () => {
     const [ticId, setTicId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -54,10 +50,9 @@ const ExoplanetFinder: React.FC<ExoplanetFinderProps> = ({ onApiKeyError }) => {
 
     const handleApiError = (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-        // This specific error message indicates the selected API key is invalid or lacks permissions.
+        // This specific error message indicates the API key is invalid or lacks permissions.
         if (errorMessage.includes("Requested entity was not found")) {
-            setError("The selected API key is invalid or not configured for this project. Please select a different key.");
-            onApiKeyError(); // Triggers the app to re-prompt for a key.
+            setError("The API key is invalid or not configured for this project. Please check your environment configuration.");
         } else {
             setError(errorMessage);
         }
