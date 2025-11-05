@@ -30,9 +30,12 @@ import BatchAnalysis from './BatchAnalysis';
 import BatchResultsTable from './BatchResultsTable';
 import ResearchReportModal from './ResearchReportModal';
 
+interface ExoplanetFinderProps {
+    onApiKeyError: () => void;
+}
 
 // FIX: The main component for finding and displaying exoplanet data.
-const ExoplanetFinder: React.FC = () => {
+const ExoplanetFinder: React.FC<ExoplanetFinderProps> = ({ onApiKeyError }) => {
     const [ticId, setTicId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -48,6 +51,17 @@ const ExoplanetFinder: React.FC = () => {
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [reportMarkdown, setReportMarkdown] = useState('');
 
+
+    const handleApiError = (err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        // This specific error message indicates the selected API key is invalid or lacks permissions.
+        if (errorMessage.includes("Requested entity was not found")) {
+            setError("The selected API key is invalid or not configured for this project. Please select a different key.");
+            onApiKeyError(); // Triggers the app to re-prompt for a key.
+        } else {
+            setError(errorMessage);
+        }
+    };
 
     const handleFetchData = async (idToFetch: string) => {
         if (!idToFetch) return;
@@ -66,7 +80,7 @@ const ExoplanetFinder: React.FC = () => {
             }
             setAnalysisResult(result);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+            handleApiError(err);
         } finally {
             setIsLoading(false);
         }
@@ -116,6 +130,11 @@ const ExoplanetFinder: React.FC = () => {
             } catch (err) {
                 console.error(`Error processing TIC ID ${currentTicId} in batch:`, err);
                 results.push({ ticId: currentTicId, status: 'error' });
+                handleApiError(err);
+                // Stop the batch if there's an API key error
+                if (err instanceof Error && err.message.includes("Requested entity was not found")) {
+                    break;
+                }
             } finally {
                 setBatchResults([...results]);
             }

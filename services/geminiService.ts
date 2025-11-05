@@ -1,26 +1,36 @@
 // services/geminiService.ts
-import { GoogleGenAI, Chat, GenerateContentResponse, Type } from '@google/genai';
-import type { ChatMessage, PlanetAnalysis, BlsParameters, BatchResult } from '../types';
+import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
+import type { ChatMessage, PlanetAnalysis, BlsParameters } from '../types';
 
-// FIX: Reverted `import.meta.env` to a safe `process.env` check.
-// This avoids the crash and correctly handles environment variables in this context.
-const apiKey = (typeof process !== 'undefined' && process.env)
-  ? (process.env.API_KEY || process.env.VITE_API_KEY)
-  : undefined;
+/**
+ * Creates a new GoogleGenAI instance for each API call.
+ * This is crucial for environments where the API key can be selected/changed by the user
+ * at any time, ensuring the latest key from `process.env` is always used.
+ * @returns A configured GoogleGenAI client.
+ * @throws An error if the API key is not found in the environment.
+ */
+const getAiClient = (): GoogleGenAI => {
+    // The hosting platform injects the selected API key into process.env.
+    const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
 
-// FIX: Create a single instance of GoogleGenAI.
-// Pass an empty string if the API key is missing to prevent a startup crash.
-// The main App component has logic to show an error and prevent API calls if the key is not set.
-const ai = new GoogleGenAI({ apiKey: apiKey || '' });
+    if (!apiKey) {
+        // This should ideally not be reached if the UI flow is correct, but serves as a safeguard.
+        throw new Error("Gemini API key not found. Please select a key before using the application.");
+    }
+    return new GoogleGenAI({ apiKey });
+};
+
 
 // FIX: Export a function to get the models API for various uses.
 export const getAiModels = () => {
+    const ai = getAiClient();
     return ai.models;
 };
 
 // FIX: Function to handle chatbot messaging logic.
 export const sendMessageToChatbot = async (message: string, history: ChatMessage[]): Promise<string> => {
     try {
+        const ai = getAiClient();
         // We'll create a new chat session for each message to pass the history.
         const dynamicChat = ai.chats.create({
             model: 'gemini-2.5-pro',
@@ -300,6 +310,7 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     `;
 
     try {
+        const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
             contents: prompt,
@@ -399,6 +410,7 @@ export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParamete
     Ensure the output is a single, valid JSON object that strictly adheres to the schema.
     `;
 
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-pro',
         contents: prompt,
