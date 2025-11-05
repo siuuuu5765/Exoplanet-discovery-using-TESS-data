@@ -6,12 +6,10 @@ import type { ChatMessage, PlanetAnalysis, BlsParameters, BatchResult } from '..
 // FIX: Use process.env.API_KEY exclusively as per Gemini API guidelines.
 const apiKey = process.env.API_KEY;
 
-if (!apiKey) {
-    throw new Error("API key is not available. Please check your environment variables.");
-}
-
 // FIX: Create a single instance of GoogleGenAI.
-const ai = new GoogleGenAI({ apiKey });
+// Pass an empty string if the API key is missing to prevent a startup crash.
+// The main App component has logic to show an error and prevent API calls if the key is not set.
+const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
 // FIX: Export a function to get the models API for various uses.
 export const getAiModels = () => {
