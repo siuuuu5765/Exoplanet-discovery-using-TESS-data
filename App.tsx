@@ -5,9 +5,13 @@ import Footer from './components/Footer';
 import ExoplanetFinder from './components/ExoplanetFinder';
 import ApiKeyError from './components/ApiKeyError';
 
+// FIX: Reverted `import.meta.env` to a safe `process.env` check.
+// This avoids the crash and correctly handles environment variables in this context.
+const apiKey = (typeof process !== 'undefined' && process.env)
+  ? (process.env.API_KEY || process.env.VITE_API_KEY)
+  : undefined;
+
 const App: React.FC = () => {
-    // FIX: Check for VITE_API_KEY as a fallback for Vite-based environments.
-    const apiKey = process.env.API_KEY || process.env.VITE_API_KEY;
     if (!apiKey) {
       return <ApiKeyError />;
     }

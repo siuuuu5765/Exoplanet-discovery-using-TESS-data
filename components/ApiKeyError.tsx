@@ -14,17 +14,19 @@ const ApiKeyError: React.FC = () => {
         <div className="text-left bg-space-dark/50 p-4 rounded-lg border border-space-light">
             <h2 className="text-md font-bold text-accent-gold mb-2">How to Fix on Your Deployment Platform (e.g., Vercel):</h2>
             <p className="text-sm text-gray-400 mb-2">
-               This application needs your Gemini API key to be set as an environment variable. 
-               It looks for a variable named <code className="bg-space-light text-accent-cyan p-1 rounded">API_KEY</code> or <code className="bg-space-light text-accent-cyan p-1 rounded">VITE_API_KEY</code>.
+               This application is built with Vite, which requires environment variables to be prefixed with <code className="bg-space-light text-accent-cyan p-1 rounded">VITE_</code> to be accessible in the browser.
             </p>
             <ol className="list-decimal list-inside text-sm mt-2 space-y-2 text-gray-400">
                 <li>Go to your project's settings on your deployment platform.</li>
                 <li>Navigate to the "Environment Variables" section.</li>
-                <li>Create a variable with the **NAME** set to either <code className="bg-space-light text-accent-cyan p-1 rounded">API_KEY</code> or <code className="bg-space-light text-accent-cyan p-1 rounded">VITE_API_KEY</code>.</li>
+                <li>Create a variable with the **NAME** set to <code className="bg-space-light text-accent-cyan p-1 rounded">VITE_API_KEY</code>. The <code className="bg-space-light text-accent-cyan p-1 rounded">VITE_</code> prefix is crucial.</li>
                 <li>Paste your Google AI Studio API key as the **VALUE** and save.</li>
                 <li>Ensure the variable is available to your deployment environment(s) (Production, Preview, etc.).</li>
                 <li>**Redeploy** your application for the changes to take effect.</li>
             </ol>
+             <p className="text-xs text-gray-500 mt-4">
+               Note: The application will also check for a variable named <code className="bg-space-light text-accent-cyan p-1 rounded">API_KEY</code> as a fallback for non-Vite environments.
+            </p>
         </div>
        </div>
     </div>

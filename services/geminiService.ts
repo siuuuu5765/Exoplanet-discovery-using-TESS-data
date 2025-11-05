@@ -2,8 +2,11 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from '@google/genai';
 import type { ChatMessage, PlanetAnalysis, BlsParameters, BatchResult } from '../types';
 
-// FIX: Check for VITE_API_KEY as a fallback for Vite-based environments.
-const apiKey = process.env.API_KEY || process.env.VITE_API_KEY;
+// FIX: Reverted `import.meta.env` to a safe `process.env` check.
+// This avoids the crash and correctly handles environment variables in this context.
+const apiKey = (typeof process !== 'undefined' && process.env)
+  ? (process.env.API_KEY || process.env.VITE_API_KEY)
+  : undefined;
 
 // FIX: Create a single instance of GoogleGenAI.
 // Pass an empty string if the API key is missing to prevent a startup crash.
