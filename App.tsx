@@ -6,8 +6,8 @@ import ExoplanetFinder from './components/ExoplanetFinder';
 import ApiKeyError from './components/ApiKeyError';
 
 const App: React.FC = () => {
-    // FIX: Check for the API key from environment variables, following Gemini API guidelines.
-    const apiKey = process.env.API_KEY;
+    // FIX: Check for VITE_API_KEY as a fallback for Vite-based environments.
+    const apiKey = process.env.API_KEY || process.env.VITE_API_KEY;
     if (!apiKey) {
       return <ApiKeyError />;
     }

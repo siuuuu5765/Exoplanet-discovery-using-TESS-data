@@ -2,9 +2,8 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from '@google/genai';
 import type { ChatMessage, PlanetAnalysis, BlsParameters, BatchResult } from '../types';
 
-// FIX: Initialize the GoogleGenAI client.
-// FIX: Use process.env.API_KEY exclusively as per Gemini API guidelines.
-const apiKey = process.env.API_KEY;
+// FIX: Check for VITE_API_KEY as a fallback for Vite-based environments.
+const apiKey = process.env.API_KEY || process.env.VITE_API_KEY;
 
 // FIX: Create a single instance of GoogleGenAI.
 // Pass an empty string if the API key is missing to prevent a startup crash.
