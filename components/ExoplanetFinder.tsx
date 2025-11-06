@@ -200,23 +200,27 @@ const ExoplanetFinder: React.FC = () => {
                      <div className="p-4 rounded-lg bg-space-blue/30 border border-space-light/50">
                         <h2 className="text-2xl font-display text-accent-gold tracking-wider text-center mb-4">Signal Detection & Analysis</h2>
                          <div className="space-y-8">
-                            <LightCurveChart 
-                                data={analysisResult.lightCurve} 
-                                period={analysisResult.detection.blsPeriod.value}
-                                epoch={analysisResult.detection.transitFitParameters.epoch}
-                                duration={analysisResult.detection.transitFitParameters.duration}
-                            />
+                            {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
+                                <LightCurveChart 
+                                    data={analysisResult.lightCurve} 
+                                    period={analysisResult.detection.blsPeriod.value}
+                                    epoch={analysisResult.detection.transitFitParameters.epoch}
+                                    duration={analysisResult.detection.transitFitParameters.duration}
+                                />
+                            )}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
                                 <PhaseFoldedLightCurveChart data={analysisResult.detection.phaseFoldedLightCurve} modelData={analysisResult.detection.transitFitModel} />
                             </div>
-                             <TransitDetailChart
-                                lightCurve={analysisResult.lightCurve}
-                                period={analysisResult.detection.blsPeriod.value}
-                                epoch={analysisResult.detection.transitFitParameters.epoch}
-                                duration={analysisResult.detection.transitFitParameters.duration}
-                                modelData={analysisResult.detection.transitFitModel}
-                            />
+                             {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
+                                <TransitDetailChart
+                                    lightCurve={analysisResult.lightCurve}
+                                    period={analysisResult.detection.blsPeriod.value}
+                                    epoch={analysisResult.detection.transitFitParameters.epoch}
+                                    duration={analysisResult.detection.transitFitParameters.duration}
+                                    modelData={analysisResult.detection.transitFitModel}
+                                />
+                             )}
                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <TransitFitParameters params={analysisResult.detection.transitFitParameters}/>
                                 <DetrendingInfoCard />
@@ -239,7 +243,9 @@ const ExoplanetFinder: React.FC = () => {
                             {analysisResult.radialVelocityCurve && analysisResult.radialVelocityCurve.length > 0 && (
                                 <RadialVelocityChart data={analysisResult.radialVelocityCurve} />
                             )}
-                            <InjectionRecovery lightCurve={analysisResult.lightCurve} originalPeriod={analysisResult.detection.blsPeriod.value} originalDepth={analysisResult.detection.transitFitParameters.depth} />
+                            {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
+                                <InjectionRecovery lightCurve={analysisResult.lightCurve} originalPeriod={analysisResult.detection.blsPeriod.value} originalDepth={analysisResult.detection.transitFitParameters.depth} />
+                            )}
                             <MlPerformanceMetrics />
                             <BayesianOptimization />
                         </div>

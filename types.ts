@@ -80,7 +80,7 @@ export interface Measurement {
 // The main analysis object
 export interface PlanetAnalysis {
   ticId: string;
-  lightCurve: LightCurvePoint[];
+  lightCurve?: LightCurvePoint[];
   radialVelocityCurve?: RadialVelocityPoint[];
   detection: {
     blsPeriod: Measurement;

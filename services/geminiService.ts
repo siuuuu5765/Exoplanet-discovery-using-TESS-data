@@ -1,7 +1,7 @@
 
 // services/geminiService.ts
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
-import type { ChatMessage, PlanetAnalysis, BlsParameters } from '../types';
+import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint } from '../types';
 
 /**
  * Creates a new GoogleGenAI instance for each API call.
@@ -268,24 +268,60 @@ const planetAnalysisSchema = {
         },
     },
     required: [
-        'ticId', 'lightCurve', 'detection', 'star', 'planet', 'classification'
+        'ticId', 'detection', 'star', 'planet', 'classification'
     ],
 };
 
+/**
+ * Procedurally generates a plausible light curve based on AI-provided parameters.
+ * This offloads the data-intensive part from the AI model, improving reliability.
+ * @param analysis The analysis object from the AI, missing the light curve.
+ * @returns An array of LightCurvePoint objects.
+ */
+const generatePlausibleLightCurve = (analysis: Omit<PlanetAnalysis, 'lightCurve'>): LightCurvePoint[] => {
+    const { period } = analysis.planet;
+    const { transitFitParameters } = analysis.detection;
+    
+    const transitPeriod = period.value;
+    const transitDepth = transitFitParameters.depth;
+    const transitDurationHours = transitFitParameters.duration;
+    
+    const lightCurve: LightCurvePoint[] = [];
+    const points = 2000;
+    const totalTimeHours = 500; // Simulate ~20 days of data
+
+    for (let i = 0; i < points; i++) {
+        const time = (i / (points - 1)) * totalTimeHours;
+        let brightness = 1.0 + (Math.random() - 0.5) * 0.0005; // Baseline with noise
+        
+        const periodInHours = transitPeriod * 24;
+        if (periodInHours <= 0) continue; // Avoid division by zero
+
+        const timeInCycle = time % periodInHours;
+        const transitStart = (periodInHours / 2) - (transitDurationHours / 2);
+        const transitEnd = (periodInHours / 2) + (transitDurationHours / 2);
+        
+        if (timeInCycle > transitStart && timeInCycle < transitEnd) {
+             brightness -= transitDepth;
+        }
+        
+        lightCurve.push({ time, brightness });
+    }
+    return lightCurve;
+};
 
 // FIX: Function to fetch and analyze data for a given TIC ID.
 export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParameters): Promise<PlanetAnalysis> => {
 
-    const systemInstruction = `You are a scientific data simulation and analysis engine. Your task is to act as the backend for the TESS Exoplanet Discovery Hub.
+    const systemInstruction = `You are a scientific data simulation and analysis engine for the TESS Exoplanet Discovery Hub.
     When given a TESS Input Catalog (TIC) ID, you must:
-    1.  **Simulate Realistic Data**: Generate a full JSON object that simulates the output of a comprehensive exoplanet detection and analysis pipeline. This includes light curve data, signal detection results (BLS), transit fitting, stellar and planetary parameters, and machine learning classification results.
-    2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema. Do not add extra properties or explanations. The entire response must be a single, parsable JSON object. Some fields like 'radialVelocityCurve', 'atmosphere', 'habitability', 'research', and 'comparisonData' are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data. Otherwise, omit them to ensure a valid JSON response.
-    3.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, try to reflect their known characteristics. For other TIC IDs or mock requests, generate creative but realistic scenarios (e.g., hot Jupiters, Earth-like worlds, eclipsing binaries misclassified as planets).
-    4.  **Incorporate User Parameters**: Use the provided Box-fitting Least Squares (BLS) parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
-    5.  **Create Research Summary (Optional)**: If you include the 'research' field, write a concise, professional, scientific-style abstract and a longer summary about the findings for the target.
-    6.  **Compare Data Sources (Optional)**: If you include the 'comparisonData' field, populate it with a few key parameters, comparing your generated 'Gemini' data with plausible 'Archive' data (e.g., from MAST or ExoFOP).
-    7.  **Classification**: The 'classification' section is required and should contain results from two models: a 1D CNN and a Random Forest. Provide confidence scores for different classes (Planet Candidate, Eclipsing Binary, Stellar Variability, Noise).
-    The goal is to provide a rich, detailed, and scientifically sound dataset for the user to explore in the application. Prioritize returning a valid JSON according to the schema over including all optional fields.`;
+    1.  **Simulate Analysis Parameters**: Generate a full JSON object that simulates the output of a comprehensive exoplanet analysis pipeline. This includes signal detection results (BLS), transit fitting, stellar/planetary parameters, and ML classification.
+    2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema.
+    3.  **IMPORTANT EXCEPTION**: Do NOT generate the \`lightCurve\` array. This is computationally intensive and will be handled by the client application. Omit the \`lightCurve\` property from your JSON response. Focus on providing accurate data for all other fields.
+    4.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios.
+    5.  **Incorporate User Parameters**: Use the provided BLS parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
+    6.  **Optional Fields**: Some fields ('radialVelocityCurve', 'atmosphere', 'habitability', 'research', 'comparisonData') are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data.
+    The goal is to provide a rich, detailed, and scientifically sound parameter set for the user to explore. Prioritize returning a valid JSON according to the schema.`;
 
     const prompt = `
     Generate a complete exoplanet analysis JSON object for TIC ID: ${ticId}.
@@ -294,7 +330,7 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     - Depth Threshold: ${blsParams.depthThreshold}
     - SNR Cutoff: ${blsParams.snrCutoff}
     
-    Ensure the output is a single, valid JSON object that strictly adheres to the schema.
+    Ensure the output is a single, valid JSON object that strictly adheres to the schema. Do NOT include the 'lightCurve' field.
     `;
 
     try {
@@ -311,8 +347,6 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
         
         let jsonText = response.text.trim();
         
-        // The model can sometimes wrap the JSON in markdown backticks or add other text.
-        // This logic robustly extracts the JSON object from the response string.
         const startIndex = jsonText.indexOf('{');
         const endIndex = jsonText.lastIndexOf('}');
 
@@ -322,6 +356,12 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
 
         try {
             const analysisResult: PlanetAnalysis = JSON.parse(jsonText);
+            
+            // If the model didn't generate a light curve (as instructed), we generate one.
+            if (!analysisResult.lightCurve || analysisResult.lightCurve.length === 0) {
+                analysisResult.lightCurve = generatePlausibleLightCurve(analysisResult as Omit<PlanetAnalysis, 'lightCurve'>);
+            }
+            
             return analysisResult;
         } catch (parseError) {
             console.error('Failed to parse JSON response from the AI model.', parseError);
