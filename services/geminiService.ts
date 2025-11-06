@@ -50,172 +50,6 @@ export const sendMessageToChatbot = async (message: string, history: ChatMessage
     }
 };
 
-// FIX: Define the schema for the AI, intentionally omitting all data-intensive fields.
-const planetAnalysisSchemaForAI = {
-    type: Type.OBJECT,
-    properties: {
-        ticId: { type: Type.STRING },
-        detection: {
-            type: Type.OBJECT,
-            properties: {
-                blsPeriod: {
-                    type: Type.OBJECT,
-                    properties: {
-                        value: { type: Type.NUMBER },
-                        uncertainty: { type: Type.NUMBER },
-                    },
-                    required: ['value', 'uncertainty'],
-                },
-                transitFitParameters: {
-                    type: Type.OBJECT,
-                    properties: {
-                        depth: { type: Type.NUMBER },
-                        duration: { type: Type.NUMBER },
-                        impactParameter: { type: Type.NUMBER },
-                        epoch: { type: Type.NUMBER },
-                    },
-                    required: ['depth', 'duration', 'impactParameter', 'epoch'],
-                },
-            },
-            required: ['blsPeriod', 'transitFitParameters'],
-        },
-        star: {
-            type: Type.OBJECT,
-            properties: {
-                name: { type: Type.STRING },
-                type: { type: Type.STRING },
-                apparentMagnitude: { type: Type.NUMBER },
-                distance: { type: Type.NUMBER },
-            },
-            required: ['name', 'type', 'apparentMagnitude', 'distance'],
-        },
-        planet: {
-            type: Type.OBJECT,
-            properties: {
-                name: { type: Type.STRING },
-                period: {
-                    type: Type.OBJECT,
-                    properties: {
-                        value: { type: Type.NUMBER },
-                        uncertainty: { type: Type.NUMBER },
-                    },
-                    required: ['value', 'uncertainty'],
-                },
-                radius: {
-                    type: Type.OBJECT,
-                    properties: {
-                        value: { type: Type.NUMBER },
-                        uncertainty: { type: Type.NUMBER },
-                    },
-                    required: ['value', 'uncertainty'],
-                },
-                mass: {
-                    type: Type.OBJECT,
-                    properties: {
-                        value: { type: Type.NUMBER },
-                        uncertainty: { type: Type.NUMBER },
-                    },
-                    required: ['value', 'uncertainty'],
-                },
-                temperature: { type: Type.NUMBER },
-            },
-            required: ['name', 'period', 'radius', 'mass', 'temperature'],
-        },
-        atmosphere: {
-            type: Type.OBJECT,
-            properties: {
-                composition: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            chemical: { type: Type.STRING },
-                            percentage: { type: Type.NUMBER },
-                        },
-                        required: ['chemical', 'percentage'],
-                    },
-                },
-                description: { type: Type.STRING },
-            },
-            required: ['composition', 'description'],
-        },
-        habitability: {
-            type: Type.OBJECT,
-            properties: {
-                score: { type: Type.NUMBER },
-                inHabitableZone: { type: Type.BOOLEAN },
-                summary: { type: Type.STRING },
-            },
-            required: ['score', 'inHabitableZone', 'summary'],
-        },
-        classification: {
-            type: Type.OBJECT,
-            properties: {
-                cnn: {
-                    type: Type.OBJECT,
-                    properties: {
-                        bestGuess: { type: Type.STRING },
-                        predictions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    class: { type: Type.STRING },
-                                    confidence: { type: Type.NUMBER },
-                                },
-                                required: ['class', 'confidence'],
-                            },
-                        },
-                    },
-                    required: ['bestGuess', 'predictions'],
-                },
-                randomForest: {
-                    type: Type.OBJECT,
-                    properties: {
-                        bestGuess: { type: Type.STRING },
-                        predictions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    class: { type: Type.STRING },
-                                    confidence: { type: Type.NUMBER },
-                                },
-                                required: ['class', 'confidence'],
-                            },
-                        },
-                    },
-                    required: ['bestGuess', 'predictions'],
-                },
-            },
-            required: ['cnn', 'randomForest'],
-        },
-        research: {
-            type: Type.OBJECT,
-            properties: {
-                abstract: { type: Type.STRING },
-                summary: { type: Type.STRING },
-            },
-            required: ['abstract', 'summary'],
-        },
-        comparisonData: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    property: { type: Type.STRING },
-                    value: { type: Type.STRING },
-                    source: { type: Type.STRING },
-                },
-                required: ['property', 'value', 'source'],
-            },
-        },
-    },
-    required: [
-        'ticId', 'detection', 'star', 'planet', 'classification'
-    ],
-};
-
 /**
  * Procedurally generates a plausible light curve based on AI-provided parameters.
  */
@@ -330,15 +164,16 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
 
     const combinedPrompt = `
     **System Role:** You are a scientific data simulation and analysis engine for the TESS Exoplanet Discovery Hub.
+    Your SOLE function is to return a valid JSON object. Do not include any text, explanations, or markdown formatting like \`\`\`json before or after the JSON object.
+
     Your instructions are:
     1.  **Simulate Analysis Parameters ONLY**: Generate a JSON object containing the high-level parameters and analysis results of an exoplanet observation.
-    2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema.
-    3.  **DO NOT Generate Data Arrays**: The schema does NOT include fields for 'lightCurve', 'blsPowerSpectrum', 'phaseFoldedLightCurve', 'transitFitModel', or 'radialVelocityCurve'. You MUST NOT generate these fields. The application will generate them based on your parameters.
+    2.  **JSON ONLY**: Your entire response MUST be a single, valid JSON object.
+    3.  **DO NOT Generate Data Arrays**: The JSON object should NOT include fields for 'lightCurve', 'blsPowerSpectrum', 'phaseFoldedLightCurve', 'transitFitModel', or 'radialVelocityCurve'. The application will generate these.
     4.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios.
     5.  **Incorporate User Parameters**: Use the provided BLS parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
     6.  **Optional Fields**: Some fields ('atmosphere', 'habitability', 'research', 'comparisonData') are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data.
-    The goal is to provide a rich, detailed, and scientifically sound parameter set for the user to explore. Prioritize returning a valid JSON according to the schema.
-
+    
     **User Task:**
     Generate a complete exoplanet analysis JSON object for TIC ID: ${ticId}.
     Use the following BLS parameters to guide the signal detection simulation:
@@ -346,18 +181,14 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     - Depth Threshold: ${blsParams.depthThreshold}
     - SNR Cutoff: ${blsParams.snrCutoff}
     
-    Ensure the output is a single, valid JSON object that strictly adheres to the schema.
+    Your response must begin with \`{\` and end with \`}\`.
     `;
 
     try {
         const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: combinedPrompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: planetAnalysisSchemaForAI,
-            },
+            contents: combinedPrompt
         });
         
         let jsonText = response.text.trim();
@@ -416,77 +247,17 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     }
 };
 
-
-const batchAnalysisSchema = {
-    type: Type.OBJECT,
-    properties: {
-        ticId: { type: Type.STRING },
-        detection: {
-            type: Type.OBJECT,
-            properties: {
-                blsPeriod: {
-                    type: Type.OBJECT,
-                    properties: {
-                        value: { type: Type.NUMBER },
-                        uncertainty: { type: Type.NUMBER }
-                    },
-                    required: ['value', 'uncertainty']
-                }
-            },
-            required: ['blsPeriod']
-        },
-        classification: {
-            type: Type.OBJECT,
-            properties: {
-                cnn: {
-                    type: Type.OBJECT,
-                    properties: {
-                        bestGuess: { type: Type.STRING }
-                    },
-                    required: ['bestGuess']
-                },
-                 randomForest: {
-                    type: Type.OBJECT,
-                    properties: {
-                        bestGuess: { type: Type.STRING }
-                    },
-                    required: ['bestGuess']
-                }
-            },
-            required: ['cnn', 'randomForest']
-        },
-        planet: {
-            type: Type.OBJECT,
-            properties: {
-                radius: {
-                    type: Type.OBJECT,
-                    properties: { value: { type: Type.NUMBER } },
-                    required: ['value']
-                },
-                mass: {
-                    type: Type.OBJECT,
-                    properties: { value: { type: Type.NUMBER } },
-                    required: ['value']
-                },
-                temperature: { type: Type.NUMBER }
-            },
-            required: ['radius', 'mass', 'temperature']
-        }
-    },
-    required: ['ticId', 'detection', 'classification', 'planet']
-};
-
 type BatchAnalysisData = Pick<PlanetAnalysis, 'ticId' | 'detection' | 'classification' | 'planet'>;
 
 export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParameters): Promise<BatchAnalysisData> => {
      const combinedPrompt = `
-    **System Role:** You are a scientific data simulation engine for batch processing. Given a TESS Input Catalog (TIC) ID, you must simulate ONLY the detection, classification, and core planet parameters (radius, mass, temperature).
+    **System Role:** You are a scientific data simulation engine for batch processing. Your SOLE function is to return a valid JSON object. Do not include any text, explanations, or markdown formatting like \`\`\`json before or after the JSON object.
+
     Your instructions are:
     1.  **Simulate Core Data**: Generate a JSON object containing only the 'ticId', 'detection', 'classification', and 'planet' fields.
-    2.  **Adhere to Schema**: The output MUST strictly conform to the provided lightweight JSON schema.
+    2.  **JSON ONLY**: Your entire response MUST be a single, valid JSON object.
     3.  **Incorporate User Parameters**: Use the provided Box-fitting Least Squares (BLS) parameters to inform the 'detection' simulation.
-    4.  **Efficiency**: This is for a batch job, so be quick and efficient. Do not generate extraneous data like light curves, research summaries, etc.
-    The goal is to quickly classify a list of targets and get their key physical parameters for comparison.
+    4.  **Efficiency**: This is for a batch job, so be quick and efficient. Do not generate extraneous data.
 
     **User Task:**
     Generate a lightweight exoplanet analysis JSON object for TIC ID: ${ticId}.
@@ -495,18 +266,14 @@ export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParamete
     - Depth Threshold: ${blsParams.depthThreshold}
     - SNR Cutoff: ${blsParams.snrCutoff}
     
-    Ensure the output is a single, valid JSON object that strictly adheres to the schema.
+    Your response must begin with \`{\` and end with \`}\`.
     `;
     
     try {
         const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: combinedPrompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: batchAnalysisSchema,
-            },
+            contents: combinedPrompt
         });
         
         let jsonText = response.text.trim();
