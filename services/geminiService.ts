@@ -324,7 +324,7 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     try {
         const ai = getAiClient();
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -455,7 +455,7 @@ export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParamete
     try {
         const ai = getAiClient();
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
