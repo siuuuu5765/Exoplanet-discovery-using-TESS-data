@@ -1,3 +1,4 @@
+
 // services/geminiService.ts
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
 import type { ChatMessage, PlanetAnalysis, BlsParameters } from '../types';
@@ -251,7 +252,7 @@ const planetAnalysisSchema = {
                              }
                         }
                     },
-                    required: ['bestGuess', 'predictions', 'featureImportance'],
+                    required: ['bestGuess', 'predictions'],
                 },
             },
             required: ['cnn', 'randomForest'],
