@@ -209,10 +209,14 @@ const ExoplanetFinder: React.FC = () => {
                                 />
                             )}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
-                                <PhaseFoldedLightCurveChart data={analysisResult.detection.phaseFoldedLightCurve} modelData={analysisResult.detection.transitFitModel} />
+                                {analysisResult.detection.blsPowerSpectrum && (
+                                     <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
+                                )}
+                               {analysisResult.detection.phaseFoldedLightCurve && analysisResult.detection.transitFitModel && (
+                                    <PhaseFoldedLightCurveChart data={analysisResult.detection.phaseFoldedLightCurve} modelData={analysisResult.detection.transitFitModel} />
+                               )}
                             </div>
-                             {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
+                             {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && analysisResult.detection.transitFitModel && (
                                 <TransitDetailChart
                                     lightCurve={analysisResult.lightCurve}
                                     period={analysisResult.detection.blsPeriod.value}

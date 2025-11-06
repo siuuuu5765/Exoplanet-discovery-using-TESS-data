@@ -84,9 +84,9 @@ export interface PlanetAnalysis {
   radialVelocityCurve?: RadialVelocityPoint[];
   detection: {
     blsPeriod: Measurement;
-    blsPowerSpectrum: BlsResultPoint[];
-    phaseFoldedLightCurve: PhaseFoldedPoint[];
-    transitFitModel: PhaseFoldedPoint[];
+    blsPowerSpectrum?: BlsResultPoint[];
+    phaseFoldedLightCurve?: PhaseFoldedPoint[];
+    transitFitModel?: PhaseFoldedPoint[];
     transitFitParameters: TransitFitParams;
   };
   star: {
