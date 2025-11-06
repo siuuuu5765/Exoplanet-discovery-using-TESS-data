@@ -302,16 +302,17 @@ const generatePlausibleLightCurve = (analysis: Omit<PlanetAnalysis, 'lightCurve'
 // FIX: Function to fetch and analyze data for a given TIC ID.
 export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParameters): Promise<PlanetAnalysis> => {
 
-    const systemInstruction = `You are a scientific data simulation and analysis engine for the TESS Exoplanet Discovery Hub.
-    When given a TESS Input Catalog (TIC) ID, you must:
+    const combinedPrompt = `
+    **System Role:** You are a scientific data simulation and analysis engine for the TESS Exoplanet Discovery Hub.
+    Your instructions are:
     1.  **Simulate Analysis Parameters**: Generate a full JSON object that simulates the output of a comprehensive exoplanet analysis pipeline.
     2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema. The schema does NOT include a 'lightCurve' field; you must not generate it.
     3.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios.
     4.  **Incorporate User Parameters**: Use the provided BLS parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
     5.  **Optional Fields**: Some fields ('radialVelocityCurve', 'atmosphere', 'habitability', 'research', 'comparisonData') are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data.
-    The goal is to provide a rich, detailed, and scientifically sound parameter set for the user to explore. Prioritize returning a valid JSON according to the schema.`;
+    The goal is to provide a rich, detailed, and scientifically sound parameter set for the user to explore. Prioritize returning a valid JSON according to the schema.
 
-    const prompt = `
+    **User Task:**
     Generate a complete exoplanet analysis JSON object for TIC ID: ${ticId}.
     Use the following BLS parameters to guide the signal detection simulation:
     - Period Range: ${blsParams.periodRange[0]} to ${blsParams.periodRange[1]} days
@@ -325,11 +326,10 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
         const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: combinedPrompt,
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: planetAnalysisSchemaForAI,
-                systemInstruction: systemInstruction,
             },
         });
         
@@ -435,14 +435,16 @@ const batchAnalysisSchema = {
 type BatchAnalysisData = Pick<PlanetAnalysis, 'ticId' | 'detection' | 'classification' | 'planet'>;
 
 export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParameters): Promise<BatchAnalysisData> => {
-     const systemInstruction = `You are a scientific data simulation engine for batch processing. Given a TESS Input Catalog (TIC) ID, you must simulate ONLY the detection, classification, and core planet parameters (radius, mass, temperature).
+     const combinedPrompt = `
+    **System Role:** You are a scientific data simulation engine for batch processing. Given a TESS Input Catalog (TIC) ID, you must simulate ONLY the detection, classification, and core planet parameters (radius, mass, temperature).
+    Your instructions are:
     1.  **Simulate Core Data**: Generate a JSON object containing only the 'ticId', 'detection', 'classification', and 'planet' fields.
     2.  **Adhere to Schema**: The output MUST strictly conform to the provided lightweight JSON schema.
     3.  **Incorporate User Parameters**: Use the provided Box-fitting Least Squares (BLS) parameters to inform the 'detection' simulation.
     4.  **Efficiency**: This is for a batch job, so be quick and efficient. Do not generate extraneous data like light curves, research summaries, etc.
-    The goal is to quickly classify a list of targets and get their key physical parameters for comparison.`;
+    The goal is to quickly classify a list of targets and get their key physical parameters for comparison.
 
-    const prompt = `
+    **User Task:**
     Generate a lightweight exoplanet analysis JSON object for TIC ID: ${ticId}.
     Use the following BLS parameters to guide the signal detection simulation:
     - Period Range: ${blsParams.periodRange[0]} to ${blsParams.periodRange[1]} days
@@ -456,11 +458,10 @@ export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParamete
         const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: combinedPrompt,
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: batchAnalysisSchema,
-                systemInstruction: systemInstruction,
             },
         });
         
