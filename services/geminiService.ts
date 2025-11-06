@@ -240,17 +240,6 @@ const planetAnalysisSchema = {
                                 required: ['class', 'confidence'],
                             },
                         },
-                        featureImportance: {
-                             type: Type.ARRAY,
-                             items: {
-                                 type: Type.OBJECT,
-                                 properties: {
-                                     feature: { type: Type.STRING },
-                                     score: { type: Type.NUMBER },
-                                 },
-                                required: ['feature', 'score']
-                             }
-                        }
                     },
                     required: ['bestGuess', 'predictions'],
                 },
@@ -320,12 +309,34 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
             },
         });
         
-        const jsonText = response.text.trim();
-        const analysisResult: PlanetAnalysis = JSON.parse(jsonText);
-        return analysisResult;
+        let jsonText = response.text.trim();
+        
+        // The model can sometimes wrap the JSON in markdown backticks or add other text.
+        // This logic robustly extracts the JSON object from the response string.
+        const startIndex = jsonText.indexOf('{');
+        const endIndex = jsonText.lastIndexOf('}');
+
+        if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            jsonText = jsonText.substring(startIndex, endIndex + 1);
+        }
+
+        try {
+            const analysisResult: PlanetAnalysis = JSON.parse(jsonText);
+            return analysisResult;
+        } catch (parseError) {
+            console.error('Failed to parse JSON response from the AI model.', parseError);
+            console.error('--- Raw Model Response ---');
+            console.error(response.text);
+            console.error('--- End Raw Model Response ---');
+            throw new Error('The AI model returned data in an unexpected format. Please try again.');
+        }
+
     } catch (error) {
         console.error(`Error analyzing TIC ID ${ticId}:`, error);
-        throw new Error('Failed to retrieve or parse analysis data from the AI model.');
+         if (error instanceof Error && error.message.includes('unexpected format')) {
+            throw error;
+        }
+        throw new Error('Failed to retrieve analysis data from the AI model.');
     }
 };
 
@@ -408,19 +419,39 @@ export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParamete
     
     Ensure the output is a single, valid JSON object that strictly adheres to the schema.
     `;
-
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: batchAnalysisSchema,
-            systemInstruction: systemInstruction,
-        },
-    });
     
-    const jsonText = response.text.trim();
-    const analysisResult: BatchAnalysisData = JSON.parse(jsonText);
-    return analysisResult;
+    try {
+        const ai = getAiClient();
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: batchAnalysisSchema,
+                systemInstruction: systemInstruction,
+            },
+        });
+        
+        let jsonText = response.text.trim();
+        const startIndex = jsonText.indexOf('{');
+        const endIndex = jsonText.lastIndexOf('}');
+
+        if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            jsonText = jsonText.substring(startIndex, endIndex + 1);
+        }
+
+        try {
+            const analysisResult: BatchAnalysisData = JSON.parse(jsonText);
+            return analysisResult;
+        } catch (parseError) {
+            console.error(`Failed to parse batch analysis JSON for TIC ID ${ticId}.`, parseError);
+            console.error('--- Raw Model Response ---');
+            console.error(response.text);
+            console.error('--- End Raw Model Response ---');
+            throw new Error(`Batch analysis for ${ticId} failed due to unexpected data format.`);
+        }
+    } catch (error) {
+        console.error(`Error in batch analysis API call for TIC ID ${ticId}:`, error);
+        throw error; // Let the caller handle the batch result status
+    }
 };
