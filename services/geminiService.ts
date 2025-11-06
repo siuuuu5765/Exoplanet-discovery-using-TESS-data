@@ -240,10 +240,9 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
 
     } catch (error) {
         console.error(`Error analyzing TIC ID ${ticId}:`, error);
-         if (error instanceof Error && error.message.includes('unexpected format')) {
-            throw error;
-        }
-        throw new Error('Failed to retrieve analysis data from the AI model.');
+        // Re-throw the original error, which provides more specific details
+        // than a generic message. The UI component will handle displaying it.
+        throw error;
     }
 };
 

@@ -54,12 +54,23 @@ const ExoplanetFinder: React.FC<ExoplanetFinderProps> = ({ onApiKeyError }) => {
 
     const handleApiError = (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-        // This specific error message indicates the API key is invalid or lacks permissions.
-        if (errorMessage.includes("Requested entity was not found") || errorMessage.includes("API key not found")) {
-            setError("The API key is invalid, missing, or not configured for this project. Please select a valid key.");
-            onApiKeyError();
-        } else {
-            setError(errorMessage);
+
+        // Provide more user-friendly messages for common API errors.
+        if (errorMessage.includes("API key") || errorMessage.includes("Requested entity was not found") || errorMessage.includes("invalid authentication credentials")) {
+            setError("Authentication Failed: The provided API key is invalid, missing, or not enabled for this project. Please verify your Vercel environment variable.");
+        } else if (errorMessage.includes("Content has been blocked")) {
+            setError("Analysis Blocked: The AI's safety settings blocked the request or response. This can sometimes occur with complex data. Please try a different target.");
+        } else if (errorMessage.includes("quota")) {
+            setError("Quota Exceeded: You have exceeded your usage limits for the Gemini API. Please check your Google Cloud account for details.");
+        } else if (errorMessage.includes("location is not supported")) {
+            setError("Service Unavailable: The Gemini API is not available in your current location.");
+        } else if (errorMessage.includes("unexpected format")) {
+             // Handle our custom parsing error
+             setError("Data Parsing Error: The AI model returned data in an unexpected format. This may be a temporary issue. Please try again.");
+        }
+        else {
+            // For any other errors, display the raw message for debugging.
+            setError(`An unexpected error occurred: ${errorMessage}`);
         }
     };
 
