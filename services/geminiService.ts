@@ -279,8 +279,7 @@ const planetAnalysisSchema = {
         },
     },
     required: [
-        'ticId', 'lightCurve', 'radialVelocityCurve', 'detection', 'star', 'planet',
-        'atmosphere', 'habitability', 'classification', 'research', 'comparisonData'
+        'ticId', 'lightCurve', 'detection', 'star', 'planet', 'classification'
     ],
 };
 
@@ -290,14 +289,14 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
 
     const systemInstruction = `You are a scientific data simulation and analysis engine. Your task is to act as the backend for the TESS Exoplanet Discovery Hub.
     When given a TESS Input Catalog (TIC) ID, you must:
-    1.  **Simulate Realistic Data**: Generate a full JSON object that simulates the output of a comprehensive exoplanet detection and analysis pipeline. This includes light curve data, radial velocity data, signal detection results (BLS), transit fitting, stellar and planetary parameters, atmospheric composition, habitability assessment, and machine learning classification results.
-    2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema. Do not add extra properties or explanations. The entire response must be a single, parsable JSON object.
+    1.  **Simulate Realistic Data**: Generate a full JSON object that simulates the output of a comprehensive exoplanet detection and analysis pipeline. This includes light curve data, signal detection results (BLS), transit fitting, stellar and planetary parameters, and machine learning classification results.
+    2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema. Do not add extra properties or explanations. The entire response must be a single, parsable JSON object. Some fields like 'radialVelocityCurve', 'atmosphere', 'habitability', 'research', and 'comparisonData' are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data. Otherwise, omit them to ensure a valid JSON response.
     3.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, try to reflect their known characteristics. For other TIC IDs or mock requests, generate creative but realistic scenarios (e.g., hot Jupiters, Earth-like worlds, eclipsing binaries misclassified as planets).
     4.  **Incorporate User Parameters**: Use the provided Box-fitting Least Squares (BLS) parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
-    5.  **Create Research Summary**: Write a concise, professional, scientific-style abstract and a longer summary about the findings for the target.
-    6.  **Compare Data Sources**: Populate the 'comparisonData' with a few key parameters, comparing your generated 'Gemini' data with plausible 'Archive' data (e.g., from MAST or ExoFOP).
-    7.  **Classification**: The 'classification' section should contain results from two models: a 1D CNN and a Random Forest. Provide confidence scores for different classes (Planet Candidate, Eclipsing Binary, Stellar Variability, Noise).
-    The goal is to provide a rich, detailed, and scientifically sound dataset for the user to explore in the application.`;
+    5.  **Create Research Summary (Optional)**: If you include the 'research' field, write a concise, professional, scientific-style abstract and a longer summary about the findings for the target.
+    6.  **Compare Data Sources (Optional)**: If you include the 'comparisonData' field, populate it with a few key parameters, comparing your generated 'Gemini' data with plausible 'Archive' data (e.g., from MAST or ExoFOP).
+    7.  **Classification**: The 'classification' section is required and should contain results from two models: a 1D CNN and a Random Forest. Provide confidence scores for different classes (Planet Candidate, Eclipsing Binary, Stellar Variability, Noise).
+    The goal is to provide a rich, detailed, and scientifically sound dataset for the user to explore in the application. Prioritize returning a valid JSON according to the schema over including all optional fields.`;
 
     const prompt = `
     Generate a complete exoplanet analysis JSON object for TIC ID: ${ticId}.

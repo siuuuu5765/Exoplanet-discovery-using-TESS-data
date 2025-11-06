@@ -226,7 +226,9 @@ const ExoplanetFinder: React.FC = () => {
 
                     {/* Habitability & Classification */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                       <HabitabilityCard habitability={analysisResult.habitability} atmosphere={analysisResult.atmosphere} />
+                       {analysisResult.habitability && analysisResult.atmosphere && (
+                            <HabitabilityCard habitability={analysisResult.habitability} atmosphere={analysisResult.atmosphere} />
+                       )}
                        <MachineLearningClassifier result={analysisResult.classification} />
                     </div>
 
@@ -234,7 +236,9 @@ const ExoplanetFinder: React.FC = () => {
                      <div className="p-4 rounded-lg bg-space-blue/30 border border-space-light/50">
                         <h2 className="text-2xl font-display text-accent-gold tracking-wider text-center mb-4">Advanced Validation & Modeling</h2>
                          <div className="space-y-8">
-                            <RadialVelocityChart data={analysisResult.radialVelocityCurve} />
+                            {analysisResult.radialVelocityCurve && analysisResult.radialVelocityCurve.length > 0 && (
+                                <RadialVelocityChart data={analysisResult.radialVelocityCurve} />
+                            )}
                             <InjectionRecovery lightCurve={analysisResult.lightCurve} originalPeriod={analysisResult.detection.blsPeriod.value} originalDepth={analysisResult.detection.transitFitParameters.depth} />
                             <MlPerformanceMetrics />
                             <BayesianOptimization />
@@ -242,9 +246,12 @@ const ExoplanetFinder: React.FC = () => {
                     </div>
 
                     {/* Research & Comparison */}
-                    <ResearchSummary summary={analysisResult.research.summary} abstract={analysisResult.research.abstract} />
-                    <ComparisonTable data={analysisResult.comparisonData} />
-
+                    {analysisResult.research && (
+                        <ResearchSummary summary={analysisResult.research.summary} abstract={analysisResult.research.abstract} />
+                    )}
+                    {analysisResult.comparisonData && analysisResult.comparisonData.length > 0 && (
+                        <ComparisonTable data={analysisResult.comparisonData} />
+                    )}
 
                     {/* Export Buttons */}
                     <div className="text-center pt-4 space-x-2 flex flex-wrap justify-center gap-2">

@@ -81,7 +81,7 @@ export interface Measurement {
 export interface PlanetAnalysis {
   ticId: string;
   lightCurve: LightCurvePoint[];
-  radialVelocityCurve: RadialVelocityPoint[];
+  radialVelocityCurve?: RadialVelocityPoint[];
   detection: {
     blsPeriod: Measurement;
     blsPowerSpectrum: BlsResultPoint[];
@@ -102,11 +102,11 @@ export interface PlanetAnalysis {
     mass: Measurement;
     temperature: number; // in Kelvin
   };
-  atmosphere: {
+  atmosphere?: {
     composition: Chemical[];
     description: string;
   };
-  habitability: {
+  habitability?: {
     score: number; // out of 10
     inHabitableZone: boolean;
     summary: string;
@@ -115,11 +115,11 @@ export interface PlanetAnalysis {
       cnn: ClassifierOutput;
       randomForest: ClassifierOutput;
   };
-  research: {
+  research?: {
       abstract: string;
       summary: string;
   };
-  comparisonData: ComparisonData[];
+  comparisonData?: ComparisonData[];
 }
 
 // For chat messages
