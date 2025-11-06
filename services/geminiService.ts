@@ -1,6 +1,6 @@
 // services/geminiService.ts
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
-import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint } from '../types';
+import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint } from '../types';
 
 /**
  * Creates a new GoogleGenAI instance for each API call.
@@ -55,17 +55,6 @@ const planetAnalysisSchemaForAI = {
     type: Type.OBJECT,
     properties: {
         ticId: { type: Type.STRING },
-        radialVelocityCurve: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    time: { type: Type.NUMBER },
-                    velocity: { type: Type.NUMBER },
-                },
-                required: ['time', 'velocity'],
-            },
-        },
         detection: {
             type: Type.OBJECT,
             properties: {
@@ -317,6 +306,25 @@ const generatePlausiblePhaseFoldedCurve = (period: number, depth: number, durati
 };
 
 
+/**
+ * Procedurally generates a plausible radial velocity curve.
+ */
+const generatePlausibleRadialVelocityCurve = (period: number, mass: number): RadialVelocityPoint[] => {
+    const points: RadialVelocityPoint[] = [];
+    const numPoints = 100;
+    // Simplified amplitude calculation. A real calculation is much more complex.
+    // We'll make the "wobble" proportional to the planet's mass.
+    const amplitude = Math.min(20, mass * 0.5); // Plausible amplitude in m/s, capped for realism.
+    
+    for (let i = 0; i < numPoints; i++) {
+        const time = (i / (numPoints - 1)) * period * 2; // Simulate for two full periods
+        const velocity = amplitude * Math.sin((2 * Math.PI * time) / period);
+        points.push({ time, velocity });
+    }
+    return points;
+};
+
+
 // FIX: Function to fetch and analyze data for a given TIC ID.
 export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParameters): Promise<PlanetAnalysis> => {
 
@@ -325,10 +333,10 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     Your instructions are:
     1.  **Simulate Analysis Parameters ONLY**: Generate a JSON object containing the high-level parameters and analysis results of an exoplanet observation.
     2.  **Adhere to Schema**: The output MUST strictly conform to the provided JSON schema.
-    3.  **DO NOT Generate Data Arrays**: The schema does NOT include fields for 'lightCurve', 'blsPowerSpectrum', 'phaseFoldedLightCurve', or 'transitFitModel'. You MUST NOT generate these fields. The application will generate them based on your parameters.
+    3.  **DO NOT Generate Data Arrays**: The schema does NOT include fields for 'lightCurve', 'blsPowerSpectrum', 'phaseFoldedLightCurve', 'transitFitModel', or 'radialVelocityCurve'. You MUST NOT generate these fields. The application will generate them based on your parameters.
     4.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios.
     5.  **Incorporate User Parameters**: Use the provided BLS parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
-    6.  **Optional Fields**: Some fields ('radialVelocityCurve', 'atmosphere', 'habitability', 'research', 'comparisonData') are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data.
+    6.  **Optional Fields**: Some fields ('atmosphere', 'habitability', 'research', 'comparisonData') are OPTIONAL. Only include them if you can generate high-quality, scientifically plausible data.
     The goal is to provide a rich, detailed, and scientifically sound parameter set for the user to explore. Prioritize returning a valid JSON according to the schema.
 
     **User Task:**
@@ -372,10 +380,15 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
                 analysisFromAI.detection.transitFitParameters.depth,
                 analysisFromAI.detection.transitFitParameters.duration
             );
+             const generatedRadialVelocity = generatePlausibleRadialVelocityCurve(
+                analysisFromAI.planet.period.value,
+                analysisFromAI.planet.mass.value
+            );
             
             const fullAnalysisResult: PlanetAnalysis = {
                 ...analysisFromAI,
                 lightCurve: generatedLightCurve,
+                radialVelocityCurve: generatedRadialVelocity,
                 detection: {
                     ...analysisFromAI.detection,
                     blsPowerSpectrum: generatedBlsSpectrum,
