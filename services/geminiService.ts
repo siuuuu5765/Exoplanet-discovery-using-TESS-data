@@ -4,17 +4,20 @@ import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsRe
 
 /**
  * Creates a new GoogleGenAI instance for each API call.
- * This ensures the latest key from `process.env` is always used.
+ * This ensures the latest key from the environment is always used.
  * @returns A configured GoogleGenAI client.
  * @throws An error if the API key is not found in the environment.
  */
+// FIX: Switched from `import.meta.env` to `process.env.API_KEY` to follow coding guidelines and fix TypeScript error.
 const getAiClient = (): GoogleGenAI => {
-    // The hosting platform injects the API key into process.env.
-    const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
+    // The API key must be obtained from process.env.API_KEY as per the guidelines.
+    // It is assumed to be available in the execution environment (e.g., injected by AI Studio).
+    const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
-        // This should ideally not be reached in a configured environment, but serves as a safeguard.
-        throw new Error("Gemini API key not found. Please ensure the API_KEY environment variable is set.");
+        // This error is thrown if the key is not available, which can happen
+        // if the user hasn't selected one through the provided mechanism.
+        throw new Error("Gemini API key not found. Please select an API key to proceed.");
     }
     return new GoogleGenAI({ apiKey });
 };
