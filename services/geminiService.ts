@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint, BatchResult } from '../types';
 
@@ -175,7 +176,7 @@ const mapAiResponseToPlanetAnalysis = (aiData: any): PlanetAnalysis => {
         star: {
             name: aiData.star?.name || `TIC ${aiData.ticId}`,
             type: aiData.star?.stellarType || aiData.star?.type || 'Unknown',
-            apparentMagnitude: aiData.star?.apparentMagnitude || 0,
+            apparentMagnitude: aiData.star?.apparentMagnitude || aiData.star?.magnitude || 0,
             distance: (aiData.star?.distanceParsecs * 3.26156) || aiData.star?.distance || 0,
         },
         detection: {
@@ -230,7 +231,10 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     1.  **Simulate Analysis Parameters ONLY**: Generate a JSON object containing the high-level parameters and analysis results of an exoplanet observation.
     2.  **JSON ONLY**: Your entire response MUST be a single, valid JSON object.
     3.  **DO NOT Generate Data Arrays**: The JSON object should NOT include fields for 'lightCurve', 'blsPowerSpectrum', 'phaseFoldedLightCurve', 'transitFitModel', or 'radialVelocityCurve'. The application will generate these.
-    4.  **Include ALL Objects**: The JSON must contain the 'star', 'detection', 'planet', 'classification', 'atmosphere', 'habitability', 'research', and 'comparisonData' objects. Provide plausible estimations if real data is scarce.
+    4.  **Include ALL Objects and Key Fields**: The JSON must contain the 'star', 'detection', and 'planet' objects. 
+        - The 'star' object MUST include 'name', 'type' (or 'stellarType'), 'apparentMagnitude', and 'distanceParsecs'.
+        - The 'planet' object (or 'planetCandidate') MUST include 'name', 'orbitalPeriodDays', 'radiusEarth', 'massEarth', and 'equilibriumTemperatureK'.
+        - Also include plausible 'atmosphere', 'habitability', 'research', and 'comparisonData' objects.
     5.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios.
     6.  **Incorporate User Parameters**: Use the provided BLS parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
     
