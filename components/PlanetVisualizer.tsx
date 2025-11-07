@@ -1,4 +1,3 @@
-
 // components/PlanetVisualizer.tsx
 import React from 'react';
 import type { PlanetAnalysis } from '../types';
@@ -10,8 +9,10 @@ interface PlanetVisualizerProps {
 
 // FIX: A simple CSS-based visualizer for the exoplanet and its star.
 const PlanetVisualizer: React.FC<PlanetVisualizerProps> = ({ planet, star }) => {
-  const planetSize = Math.max(10, Math.min(planet.radius.value * 5, 50)); // Scale radius
-  const orbitSize = 100 + Math.log(planet.period.value) * 20; // Scale period
+  // Safeguard against period being 0, which would cause Math.log(0) = -Infinity
+  const safePeriod = planet.period.value > 0.1 ? planet.period.value : 10;
+  const planetSize = Math.max(10, Math.min(planet.radius.value * 5, 50));
+  const orbitSize = 100 + Math.log(safePeriod) * 20; // Scale period logarithmically
 
   // Basic color mapping based on temperature
   const getPlanetColor = (temp: number) => {
@@ -42,7 +43,7 @@ const PlanetVisualizer: React.FC<PlanetVisualizerProps> = ({ planet, star }) => 
                 style={{
                     width: `${orbitSize * 2}px`,
                     height: `${orbitSize * 2}px`,
-                    animation: `orbit ${planet.period.value * 2}s linear infinite`
+                    animation: `orbit ${safePeriod * 2}s linear infinite`
                 }}
             >
                 <div 
