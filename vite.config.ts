@@ -1,21 +1,18 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-// FIX: Import `fileURLToPath` to resolve the project root path from `import.meta.url`.
-import { fileURLToPath } from 'url';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env vars from the Vercel environment
-  // FIX: Replace `process.cwd()` with an ESM-compatible way to get the root directory.
-  // This resolves the TypeScript error "Property 'cwd' does not exist on type 'Process'".
-  const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '');
+  // In a Vercel environment, the API_KEY will be available in process.env
+  // during the build step.
+  const apiKey = process.env.API_KEY;
 
   return {
     plugins: [react()],
-    // This 'define' block is the fix. It makes the environment variable
-    // available in the client-side code.
+    // This 'define' block is the "bridge". It makes the environment variable
+    // securely available in the client-side code under `process.env.API_KEY`.
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      'process.env.API_KEY': JSON.stringify(apiKey)
     }
   };
 });
