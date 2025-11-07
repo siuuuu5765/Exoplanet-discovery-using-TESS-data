@@ -1,5 +1,5 @@
 // services/geminiService.ts
-import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
+import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint } from '../types';
 
 /**
@@ -8,16 +8,14 @@ import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsRe
  * @returns A configured GoogleGenAI client.
  * @throws An error if the API key is not found in the environment.
  */
-// FIX: Switched from `import.meta.env` to `process.env.API_KEY` to follow coding guidelines and fix TypeScript error.
+// FIX: Use `process.env.API_KEY` to get the API key as per the coding guidelines.
+// This resolves the TypeScript error `Property 'env' does not exist on type 'ImportMeta'`.
 const getAiClient = (): GoogleGenAI => {
-    // The API key must be obtained from process.env.API_KEY as per the guidelines.
-    // It is assumed to be available in the execution environment (e.g., injected by AI Studio).
     const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
-        // This error is thrown if the key is not available, which can happen
-        // if the user hasn't selected one through the provided mechanism.
-        throw new Error("Gemini API key not found. Please select an API key to proceed.");
+        // This error is thrown if the key is not available in the environment.
+        throw new Error("Gemini API key not found. Please ensure API_KEY is set in your environment settings.");
     }
     return new GoogleGenAI({ apiKey });
 };

@@ -30,12 +30,8 @@ import BatchAnalysis from './BatchAnalysis';
 import BatchResultsTable from './BatchResultsTable';
 import ResearchReportModal from './ResearchReportModal';
 
-interface ExoplanetFinderProps {
-    onApiKeyError: () => void;
-}
-
-// FIX: The main component for finding and displaying exoplanet data.
-const ExoplanetFinder: React.FC<ExoplanetFinderProps> = ({ onApiKeyError }) => {
+// This component is now self-reliant for API calls and doesn't need to signal parent components.
+const ExoplanetFinder: React.FC = () => {
     const [ticId, setTicId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
