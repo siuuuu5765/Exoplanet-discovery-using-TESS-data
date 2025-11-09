@@ -71,6 +71,10 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
     ];
     
     const explanation = `Detected consistent ${period.toFixed(2)}-day periodic dips with a depth of ${(transitDepth * 100).toFixed(2)}%, corresponding to a ${planetRadius.toFixed(1)} Earth-radius object.`;
+    
+    const abstract = `We report the discovery of a new exoplanet candidate, ${ticId} b, identified from simulated TESS data. The candidate exhibits periodic transit events with a period of ${period.toFixed(2)} days and a depth of ${(transitDepth * 100).toFixed(2)}%, suggesting an object with a radius of ${planetRadius.toFixed(2)} R⊕ orbiting a G-type star. Machine learning classification using both a 1D CNN and a Random Forest model strongly supports the planetary nature of the signal with high confidence. The analysis indicates a compelling candidate for further investigation.`;
+
+    const summary = `The analysis pipeline began with detrending the raw light curve to remove instrumental and stellar noise. A Box-fitting Least Squares (BLS) algorithm was applied, revealing a significant periodic signal at ${period.toFixed(2)} days. The light curve was then phase-folded to this period, clearly showing a transit-like dip which was used to derive the planet's radius. The signal was vetted by machine learning models, which confirmed its planetary characteristics.\n\nThe candidate's position in the habitable zone makes it a compelling target. Future research should focus on obtaining radial velocity measurements to confirm its mass and density. Subsequent atmospheric characterization with facilities like JWST could search for potential biosignatures.`;
 
     return {
         ticId: ticId,
@@ -138,8 +142,8 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
             },
         },
         research: {
-            abstract: "We report the discovery of a new Earth-sized exoplanet candidate, Mock-12345 b, identified through analysis of simulated TESS data. The candidate exhibits periodic transit events with a period of approximately [Period] days, suggesting an object with a radius of [Radius] R_Earth orbiting a G-type star. Preliminary machine learning classification strongly supports the planetary nature of the signal. Further characterization is required to confirm the candidate and determine its atmospheric properties.",
-            summary: "This research details the analysis pipeline used to identify the exoplanet candidate Mock-12345 b. Raw light curve data was first detrended to remove stellar and instrumental noise. A Box-fitting Least Squares (BLS) algorithm was then applied, revealing a significant periodic signal. The light curve was phase-folded to the detected period, clearly showing a transit-like dip. Machine learning models, including a 1D Convolutional Neural Network (CNN) and a Random Forest classifier, were used to vet the signal, both yielding a high probability of it being a planet candidate. Based on the transit depth and stellar parameters, the planet's radius was estimated. The orbital period places it within the star's habitable zone, making it a compelling target for future follow-up observations.",
+            abstract,
+            summary,
         },
         comparisonData: [
             { property: "Orbital Period (days)", value: period.toFixed(3), source: 'Gemini' },
