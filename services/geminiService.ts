@@ -1,6 +1,7 @@
 
+
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
-import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint, BatchResult } from '../types';
+import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint, BatchResult, TransitFitParams } from '../types';
 
 /**
  * Creates a new GoogleGenAI instance for each API call.
@@ -159,6 +160,98 @@ const generatePlausibleRadialVelocityCurve = (period: number, mass: number): Rad
 };
 
 /**
+ * Detrends a light curve using a simple moving median filter.
+ * This helps remove long-term stellar variability or instrumental drift.
+ */
+const detrendLightCurve = (lightCurve: LightCurvePoint[], windowSize: number): LightCurvePoint[] => {
+    if (windowSize % 2 === 0) windowSize++; // Ensure odd window size for a centered median
+    const halfWindow = Math.floor(windowSize / 2);
+    
+    const trend = lightCurve.map((_, i) => {
+        const start = Math.max(0, i - halfWindow);
+        const end = Math.min(lightCurve.length, i + halfWindow + 1);
+        const window = lightCurve.slice(start, end).map(p => p.brightness);
+        window.sort((a, b) => a - b);
+        return window[Math.floor(window.length / 2)];
+    });
+
+    const detrended = lightCurve.map((point, i) => ({
+        time: point.time,
+        brightness: point.brightness / trend[i],
+    }));
+
+    return detrended;
+};
+
+/**
+ * Folds a light curve at a given period and epoch (t0).
+ * The resulting phase is centered at 0, ranging from -0.5 to 0.5.
+ */
+const phaseFoldLightCurve = (lightCurve: LightCurvePoint[], periodDays: number, t0: number): PhaseFoldedPoint[] => {
+    const periodHours = periodDays * 24;
+    if (periodHours <= 0) return [];
+    
+    return lightCurve.map(point => {
+        const phase = (((point.time - t0) / periodHours) + 0.5) % 1.0 - 0.5;
+        return { phase, brightness: point.brightness };
+    }).sort((a, b) => a.phase - b.phase);
+};
+
+/**
+ * Calculates transit parameters (depth, duration, epoch) from a light curve.
+ * This provides a more realistic analysis based on the photometric data itself.
+ */
+const calculateTransitParameters = (
+    lightCurve: LightCurvePoint[], // Should be detrended
+    periodDays: number
+): TransitFitParams => {
+    if (lightCurve.length < 20 || periodDays <= 0) {
+        return { depth: 0, duration: 0, impactParameter: 0.5, epoch: 0 };
+    }
+
+    // First, find an approximate epoch (t0) by locating the time of minimum flux.
+    // This serves as the reference point for the first transit.
+    const tMinFlux = lightCurve.reduce((prev, curr) => (curr.brightness < prev.brightness ? curr : prev)).time;
+    const periodHours = periodDays * 24;
+    const epoch = tMinFlux % periodHours;
+
+    const foldedCurve = phaseFoldLightCurve(lightCurve, periodDays, epoch);
+
+    // To calculate the baseline flux, find the median of points outside the transit.
+    const outOfTransitPoints = foldedCurve.filter(p => Math.abs(p.phase) > 0.1);
+    const medianFlux = outOfTransitPoints.length > 0
+        ? [...outOfTransitPoints].map(p => p.brightness).sort((a,b)=>a-b)[Math.floor(outOfTransitPoints.length / 2)]
+        : 1.0;
+
+    // To calculate depth, find the minimum flux during the transit.
+    const inTransitPoints = foldedCurve.filter(p => Math.abs(p.phase) < 0.05);
+    const minTransitFlux = inTransitPoints.length > 0
+        ? Math.min(...inTransitPoints.map(p => p.brightness))
+        : medianFlux;
+        
+    const depth = Math.max(0, medianFlux - minTransitFlux);
+
+    // Calculate duration by finding the width of the transit dip.
+    const threshold = medianFlux - depth * 0.5;
+    const belowThresholdPoints = foldedCurve.filter(p => p.brightness < threshold);
+    
+    let duration = 0;
+    if (belowThresholdPoints.length > 1) {
+        const minPhase = Math.min(...belowThresholdPoints.map(p => p.phase));
+        const maxPhase = Math.max(...belowThresholdPoints.map(p => p.phase));
+        duration = (maxPhase - minPhase) * periodHours;
+    }
+
+    return {
+        depth,
+        duration,
+        epoch, // Epoch is the center of the first observed transit (in hours)
+        impactParameter: 0.5, // Keep as a mock value, it's difficult to derive simply
+    };
+};
+
+
+/**
  * ADAPTER FUNCTION: Maps the raw AI JSON response to the strict PlanetAnalysis type.
  * This makes the app resilient to minor variations in the AI's output format.
  */
@@ -268,25 +361,47 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
             const analysisFromAI = JSON.parse(jsonText);
             const mappedAnalysis = mapAiResponseToPlanetAnalysis(analysisFromAI);
             
-            // Procedurally generate the data-intensive parts based on the mapped data.
+            // Generate a plausible "raw" light curve based on AI seed parameters.
             const generatedLightCurve = generatePlausibleLightCurve(mappedAnalysis);
-            const generatedBlsSpectrum = generatePlausibleBlsSpectrum(mappedAnalysis.detection.blsPeriod.value);
+
+            // --- Analysis Pipeline ---
+            // 1. Detrend the light curve to remove noise and stellar variability.
+            const detrendedLightCurve = detrendLightCurve(generatedLightCurve, 101);
+
+            // 2. Calculate transit parameters from the detrended data.
+            // We trust the AI's detected period as the input for this calculation.
+            const periodDays = mappedAnalysis.planet.period.value;
+            let finalAnalysis = mappedAnalysis;
+
+            if (periodDays > 0) {
+                const calculatedParams = calculateTransitParameters(detrendedLightCurve, periodDays);
+                finalAnalysis = {
+                    ...mappedAnalysis,
+                    detection: {
+                        ...mappedAnalysis.detection,
+                        transitFitParameters: calculatedParams,
+                    },
+                };
+            }
+
+            // 3. Generate visualization data using the newly calculated parameters for consistency.
+            const generatedBlsSpectrum = generatePlausibleBlsSpectrum(finalAnalysis.detection.blsPeriod.value);
             const { folded, model } = generatePlausiblePhaseFoldedCurve(
-                mappedAnalysis.planet.period.value,
-                mappedAnalysis.detection.transitFitParameters.depth,
-                mappedAnalysis.detection.transitFitParameters.duration
+                finalAnalysis.planet.period.value,
+                finalAnalysis.detection.transitFitParameters.depth,
+                finalAnalysis.detection.transitFitParameters.duration
             );
              const generatedRadialVelocity = generatePlausibleRadialVelocityCurve(
-                mappedAnalysis.planet.period.value,
-                mappedAnalysis.planet.mass.value
+                finalAnalysis.planet.period.value,
+                finalAnalysis.planet.mass.value
             );
             
             const fullAnalysisResult: PlanetAnalysis = {
-                ...mappedAnalysis,
-                lightCurve: generatedLightCurve,
+                ...finalAnalysis,
+                lightCurve: detrendedLightCurve, // Use the cleaner, detrended curve for plots
                 radialVelocityCurve: generatedRadialVelocity,
                 detection: {
-                    ...mappedAnalysis.detection,
+                    ...finalAnalysis.detection,
                     blsPowerSpectrum: generatedBlsSpectrum,
                     phaseFoldedLightCurve: folded,
                     transitFitModel: model,
