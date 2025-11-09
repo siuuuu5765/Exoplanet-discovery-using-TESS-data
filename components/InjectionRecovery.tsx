@@ -6,11 +6,12 @@ import { getAiModels } from '../services/geminiService';
 import { Type } from '@google/genai';
 import DetectionEfficiencyHeatmap from './DetectionEfficiencyHeatmap';
 
+// Define the schema for the AI model's JSON response to ensure consistency.
 const injectionResultSchema = {
     type: Type.OBJECT,
     properties: {
-        recovered: { type: Type.BOOLEAN },
-        recoveredPeriod: { type: Type.NUMBER },
+        recovered: { type: Type.BOOLEAN, description: "True if a signal within 5% of the injected period was found, otherwise false." },
+        recoveredPeriod: { type: Type.NUMBER, description: "The period of the strongest detected signal. Return 0 if no clear signal was found." },
     },
     required: ["recovered", "recoveredPeriod"]
 }
@@ -20,62 +21,83 @@ const InjectionRecovery: React.FC<{ lightCurve: LightCurvePoint[], originalPerio
     const [results, setResults] = useState<InjectionResult[]>([]);
     const [isRunning, setIsRunning] = useState(false);
 
+    /**
+     * Injects a synthetic transit signal into a light curve and asks the AI model to try and recover it.
+     * @param period The period of the synthetic transit to inject (in days).
+     * @param depth The depth of the synthetic transit to inject (normalized brightness).
+     * @returns A promise that resolves to an InjectionResult object.
+     */
     const runInjectionTest = async (period: number, depth: number): Promise<InjectionResult> => {
-        // Create a new light curve with the injected signal
-        const injectedLightCurve = lightCurve.map(p => ({ ...p })); // Deep copy
-        const transitDuration = 0.1;
+        // Create a deep copy of the light curve to avoid modifying the original data.
+        const injectedLightCurve = lightCurve.map(p => ({ ...p }));
+        const transitDurationDays = 0.1; // ~2.4 hours, a typical transit duration.
 
+        // Inject a simple, box-shaped transit signal into the light curve.
         for (const point of injectedLightCurve) {
-            const timeInCycle = (point.time / (period * 24)) % 1;
-            const durationInCycle = transitDuration / (period * 24);
-            if (timeInCycle > 0.45 && timeInCycle < 0.55 && Math.abs(timeInCycle - 0.5) < durationInCycle / 2) {
-                point.brightness -= depth;
+            const periodHours = period * 24;
+            const timeInCycle = point.time % periodHours; // Find where we are in the orbital cycle.
+            const transitDurationHours = transitDurationDays * 24;
+            const transitStart = (periodHours / 2) - (transitDurationHours / 2);
+            const transitEnd = (periodHours / 2) + (transitDurationHours / 2);
+            
+            if (timeInCycle > transitStart && timeInCycle < transitEnd) {
+                 point.brightness -= depth; // Lower the brightness during the transit.
             }
         }
 
         const prompt = `
-            Analyze the provided TESS light curve data. A synthetic transit signal has been injected.
-            Run a Box-fitting Least Squares (BLS) algorithm to detect the strongest periodic signal.
-            The injected signal has a period of approximately ${period.toFixed(2)} days.
-            Was a signal recovered with a period between ${period * 0.95} and ${period * 1.05} days?
-            Return a JSON object with 'recovered' (boolean) and 'recoveredPeriod' (number, or 0 if not recovered).
+            Analyze the provided TESS light curve data sample where a synthetic transit signal has been injected.
+            Your task is to run a detection algorithm (like Box-fitting Least Squares) to find the strongest periodic signal.
 
-            Light Curve Data Sample:
+            The injected signal has a period of approximately ${period.toFixed(2)} days.
+
+            A signal is considered "recovered" if you detect a strong periodic signal with a period between ${(period * 0.95).toFixed(2)} and ${(period * 1.05).toFixed(2)} days.
+
+            Your response MUST be a single, valid JSON object adhering to the provided schema. Do not include any text, explanations, or markdown formatting.
+
+            Light Curve Data Sample (first 100 points):
             ${JSON.stringify(injectedLightCurve.slice(0, 100))}
         `;
 
         try {
             const aiModels = getAiModels();
             const response = await aiModels.generateContent({
-                model: 'gemini-2.5-flash', // Flash is fine for this simpler task
+                model: 'gemini-2.5-flash', // Flash is efficient for this focused task.
                 contents: prompt,
                 config: {
                     responseMimeType: 'application/json',
                     responseSchema: injectionResultSchema
                 }
             });
+
+            // The AI returns a JSON string, which we parse.
             const result = JSON.parse(response.text);
             return { injectedPeriod: period, injectedDepth: depth, recovered: result.recovered, recoveredPeriod: result.recoveredPeriod };
         } catch (e) {
-            console.error("Injection test failed:", e);
+            console.error(`Injection test failed for P=${period.toFixed(2)}d, D=${depth.toFixed(4)}:`, e);
+            // If the API call fails or parsing fails, we assume the signal was not recovered.
             return { injectedPeriod: period, injectedDepth: depth, recovered: false };
         }
     };
     
+    /**
+     * Runs a full sweep of injection-recovery tests across a grid of periods and depths.
+     */
     const runFullSweep = async () => {
         setIsRunning(true);
         setIsLoading(true);
         setResults([]);
         const newResults: InjectionResult[] = [];
 
-        const periodSteps = [originalPeriod * 0.5, originalPeriod, originalPeriod * 2];
-        const depthSteps = [originalDepth * 0.5, originalDepth, originalDepth * 2];
+        // Define a grid of parameters to test, centered around the original detection.
+        const periodSteps = [originalPeriod * 0.5, originalPeriod, originalPeriod * 1.5, originalPeriod * 2];
+        const depthSteps = [originalDepth * 0.5, originalDepth, originalDepth * 1.5, originalDepth * 2];
 
         for (const period of periodSteps) {
             for (const depth of depthSteps) {
                 const result = await runInjectionTest(period, depth);
                 newResults.push(result);
-                setResults([...newResults]); // Update UI incrementally
+                setResults([...newResults]); // Update UI incrementally to show progress.
             }
         }
         setIsLoading(false);
@@ -97,6 +119,7 @@ const InjectionRecovery: React.FC<{ lightCurve: LightCurvePoint[], originalPerio
                 </button>
             </div>
             
+            {/* The heatmap component will visualize the results as they come in. */}
             {results.length > 0 && <DetectionEfficiencyHeatmap data={results} />}
         </div>
     );
