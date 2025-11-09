@@ -21,7 +21,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
         type: 'scatter' as any,
         name: 'Observed Data',
         marker: { color: '#00ffff', size: 5, opacity: 0.7 },
-        hoverinfo: 'skip'
+        hovertemplate: 'Phase: %{x:.3f}<br>Flux: %{y:.5f}<extra></extra>'
       };
 
       const modelTrace = {
@@ -80,7 +80,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
       const config: Partial<Plotly.Config> = {
         responsive: true,
         displaylogo: false,
-        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d', 'toggleSpikelines']
+        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']
       };
 
       Plotly.react(chartRef.current, [observedTrace as any, modelTrace as any], layout, config);

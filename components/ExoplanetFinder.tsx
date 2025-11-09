@@ -1,12 +1,12 @@
 // components/ExoplanetFinder.tsx
-import React, { useState } from 'react';
-import { fetchAndAnalyzeTicData, analyzeTicIdForBatch } from '../services/geminiService';
+import React, { useState, useEffect } from 'react';
+import { fetchAndAnalyzeTicData, analyzeTicIdForBatch, phaseFoldLightCurve } from '../services/geminiService';
 import { generateMockAnalysis } from '../services/mockData';
 import { exportAnalysisToJSON, exportAnalysisToCSV } from '../services/exportService';
 import { generatePdfReport } from '../services/pdfGenerator';
 import { generatePresentation } from '../services/presentationPackService';
 import { generateResearchReport } from '../services/reportGenerator';
-import type { PlanetAnalysis, BlsParameters, BatchResult } from '../types';
+import type { PlanetAnalysis, BlsParameters, BatchResult, PhaseFoldedPoint } from '../types';
 import LightCurveChart from './LightCurveChart';
 import PlanetVisualizer from './PlanetVisualizer';
 import PlanetProfileCard from './PlanetProfileCard';
@@ -46,6 +46,9 @@ const ExoplanetFinder: React.FC = () => {
     const [batchProgress, setBatchProgress] = useState('');
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [reportMarkdown, setReportMarkdown] = useState('');
+    
+    const [interactivePeriod, setInteractivePeriod] = useState<number | null>(null);
+    const [phaseFoldedData, setPhaseFoldedData] = useState<PhaseFoldedPoint[] | null>(null);
 
 
     const handleApiError = (err: unknown) => {
@@ -97,6 +100,30 @@ const ExoplanetFinder: React.FC = () => {
         setTicId(selectedTicId);
         handleFetchData(selectedTicId);
     };
+
+    // When a new analysis result comes in, initialize the interactive period
+    useEffect(() => {
+        if (analysisResult) {
+            setInteractivePeriod(analysisResult.detection.blsPeriod.value);
+        } else {
+            setInteractivePeriod(null);
+        }
+    }, [analysisResult]);
+
+    // When the interactive period changes, re-calculate the phase-folded data
+    useEffect(() => {
+        if (analysisResult?.lightCurve && interactivePeriod !== null && interactivePeriod > 0) {
+            const folded = phaseFoldLightCurve(
+                analysisResult.lightCurve,
+                interactivePeriod,
+                analysisResult.detection.transitFitParameters.epoch
+            );
+            setPhaseFoldedData(folded);
+        } else {
+            setPhaseFoldedData(analysisResult?.detection.phaseFoldedLightCurve || null);
+        }
+    }, [analysisResult, interactivePeriod]);
+
 
     const handleRunBatch = async (ticIdsInput: string) => {
         const ticIds = ticIdsInput.trim().split(/\s+/).filter(id => id);
@@ -224,8 +251,8 @@ const ExoplanetFinder: React.FC = () => {
                                 {analysisResult.detection.blsPowerSpectrum && (
                                      <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
                                 )}
-                               {analysisResult.detection.phaseFoldedLightCurve && analysisResult.detection.transitFitModel && (
-                                    <PhaseFoldedLightCurveChart data={analysisResult.detection.phaseFoldedLightCurve} modelData={analysisResult.detection.transitFitModel} />
+                               {phaseFoldedData && analysisResult.detection.transitFitModel && (
+                                    <PhaseFoldedLightCurveChart data={phaseFoldedData} modelData={analysisResult.detection.transitFitModel} />
                                )}
                             </div>
                              {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && analysisResult.detection.transitFitModel && (
@@ -238,7 +265,12 @@ const ExoplanetFinder: React.FC = () => {
                                 />
                              )}
                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <TransitFitParameters params={analysisResult.detection.transitFitParameters}/>
+                                {interactivePeriod !== null &&
+                                    <TransitFitParameters 
+                                        params={{...analysisResult.detection.transitFitParameters, period: interactivePeriod}}
+                                        onPeriodChange={setInteractivePeriod}
+                                    />
+                                }
                                 <DetrendingInfoCard />
                             </div>
                         </div>

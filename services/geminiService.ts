@@ -187,7 +187,7 @@ const detrendLightCurve = (lightCurve: LightCurvePoint[], windowSize: number): L
  * Folds a light curve at a given period and epoch (t0).
  * The resulting phase is centered at 0, ranging from -0.5 to 0.5.
  */
-const phaseFoldLightCurve = (lightCurve: LightCurvePoint[], periodDays: number, t0: number): PhaseFoldedPoint[] => {
+export const phaseFoldLightCurve = (lightCurve: LightCurvePoint[], periodDays: number, t0: number): PhaseFoldedPoint[] => {
     const periodHours = periodDays * 24;
     if (periodHours <= 0) return [];
     

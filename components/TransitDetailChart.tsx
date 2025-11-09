@@ -43,7 +43,7 @@ const TransitDetailChart: React.FC<TransitDetailChartProps> = ({ lightCurve, per
         type: 'scatter' as any,
         name: 'Observed Transits',
         marker: { color: '#00ffff', size: 4, opacity: 0.6 },
-        hoverinfo: 'skip'
+        hovertemplate: 'Phase: %{x:.4f}<br>Flux: %{y:.5f}<extra></extra>'
       };
       
       const modelTrace = {
@@ -98,7 +98,7 @@ const TransitDetailChart: React.FC<TransitDetailChartProps> = ({ lightCurve, per
       const config: Partial<Plotly.Config> = {
         responsive: true,
         displaylogo: false,
-        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d', 'toggleSpikelines']
+        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']
       };
 
       Plotly.react(chartRef.current, [observedTrace, modelTrace] as any[], layout, config);

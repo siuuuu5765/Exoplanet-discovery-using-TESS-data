@@ -11,51 +11,63 @@ interface LightCurveChartProps {
   duration: number;
 }
 
-// FIX: This chart visualizes the full, un-phased light curve data from TESS.
 const LightCurveChart: React.FC<LightCurveChartProps> = ({ data, period, epoch, duration }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (chartRef.current && data.length > 0) {
-      const trace = {
-        x: data.map(p => p.time),
-        y: data.map(p => p.brightness),
+      const inTransitPoints = { x: [] as number[], y: [] as number[] };
+      const outOfTransitPoints = { x: [] as number[], y: [] as number[] };
+      const periodInHours = period * 24;
+
+      if (periodInHours > 0 && duration > 0) {
+        data.forEach(p => {
+          const timeSinceEpoch = p.time - epoch;
+          // Center the phase around 0, handling positive and negative time
+          const phaseInHours = ((timeSinceEpoch % periodInHours) + periodInHours) % periodInHours;
+          const centeredPhase = phaseInHours > periodInHours / 2 ? phaseInHours - periodInHours : phaseInHours;
+      
+          if (Math.abs(centeredPhase) <= duration / 2) {
+            inTransitPoints.x.push(p.time);
+            inTransitPoints.y.push(p.brightness);
+          } else {
+            outOfTransitPoints.x.push(p.time);
+            outOfTransitPoints.y.push(p.brightness);
+          }
+        });
+      } else {
+        // If period/duration is invalid, plot all points normally
+        outOfTransitPoints.x = data.map(p => p.time);
+        outOfTransitPoints.y = data.map(p => p.brightness);
+      }
+
+      const outOfTransitTrace = {
+        x: outOfTransitPoints.x,
+        y: outOfTransitPoints.y,
         mode: 'markers',
-        type: 'scattergl', // Use WebGL for better performance with large datasets
+        type: 'scattergl', // Use WebGL for better performance
         name: 'TESS Photometry',
         marker: {
           color: '#00ffff', // cyan
           size: 2,
           opacity: 0.7
         },
-        hoverinfo: 'skip'
+        hovertemplate: 'Time: %{x:.2f} hrs<br>Flux: %{y:.5f}<extra></extra>'
       };
-
-      // --- Calculate transit highlights ---
-      const shapes = [];
-      const periodInHours = period * 24;
-      const firstTime = data[0].time;
-      // For mock data, epoch might be a large BJD. We need a reference time.
-      // Let's find the first transit *after* our data starts.
-      const firstEpoch = epoch > firstTime ? epoch : epoch + Math.ceil((firstTime - epoch) / periodInHours) * periodInHours;
-
-      for (let transitTime = firstEpoch; transitTime < data[data.length - 1].time; transitTime += periodInHours) {
-        shapes.push({
-          type: 'rect',
-          xref: 'x',
-          yref: 'paper',
-          x0: transitTime - duration / 2,
-          y0: 0,
-          x1: transitTime + duration / 2,
-          y1: 1,
-          fillcolor: '#ef4444',
-          opacity: 0.3,
-          line: {
-            width: 0,
-          },
-        });
-      }
-
+      
+      const inTransitTrace = {
+        x: inTransitPoints.x,
+        y: inTransitPoints.y,
+        mode: 'markers',
+        type: 'scattergl',
+        name: 'In Transit',
+        marker: {
+          color: '#ef4444', // red
+          size: 3,
+          opacity: 0.9
+        },
+        hovertemplate: 'Time: %{x:.2f} hrs<br>Flux: %{y:.5f}<extra></extra>'
+      };
 
       const yMin = Math.min(...data.map(p => p.brightness));
       const yMax = Math.max(...data.map(p => p.brightness));
@@ -91,9 +103,14 @@ const LightCurveChart: React.FC<LightCurveChartProps> = ({ data, period, epoch, 
             range: [yMin - yRangePadding, yMax + yRangePadding]
         },
         margin: { l: 60, r: 20, b: 50, t: 50 },
-        showlegend: false,
+        legend: {
+            orientation: 'h',
+            yanchor: 'bottom',
+            y: 1.02,
+            xanchor: 'right',
+            x: 1
+        },
         hovermode: 'x unified',
-        shapes: shapes,
       };
       
       const config: Partial<Plotly.Config> = {
@@ -102,7 +119,7 @@ const LightCurveChart: React.FC<LightCurveChartProps> = ({ data, period, epoch, 
         modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']
       };
 
-      Plotly.react(chartRef.current, [trace as any], layout, config);
+      Plotly.react(chartRef.current, [outOfTransitTrace as any, inTransitTrace as any], layout, config);
     }
   }, [data, period, epoch, duration]);
 
