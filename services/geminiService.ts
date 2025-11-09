@@ -1,7 +1,7 @@
 // services/geminiService.ts
 
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
-import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint, BatchResult, TransitFitParams } from '../types';
+import type { ChatMessage, PlanetAnalysis, BlsParameters, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint, RadialVelocityPoint, BatchResult, TransitFitParams, Habitability } from '../types';
 
 /**
  * Creates a new GoogleGenAI instance for each API call.
@@ -252,6 +252,77 @@ const calculateTransitParameters = (
 
 
 /**
+ * Calculates a weighted habitability score and provides a classification and reasoning.
+ */
+export const calculateHabitability = (
+    planet: PlanetAnalysis['planet'],
+    star: PlanetAnalysis['star']
+): Habitability => {
+    const { temperature, radius, period } = planet;
+    const { type: starType } = star;
+
+    // 1. Temperature Score (40%) - Ideal is 288K (Earth)
+    const optimalTemp = 288;
+    const tempRange = 60; // A wider range for scoring
+    // FIX: The 'temperature' property is a direct number, not an object with a 'value' property.
+    const tempScore = 10 * Math.exp(-Math.pow(temperature - optimalTemp, 2) / (2 * Math.pow(tempRange, 2)));
+
+    // 2. Radius Score (20%) - Ideal is 0.8-1.8 R_Earth
+    let radiusScore = 0;
+    const r = radius.value;
+    if (r >= 0.8 && r <= 1.8) radiusScore = 10;
+    else if (r >= 0.5 && r < 0.8) radiusScore = 10 * ((r - 0.5) / 0.3);
+    else if (r > 1.8 && r <= 3.0) radiusScore = 10 * (1 - ((r - 1.8) / 1.2));
+    else radiusScore = 0;
+
+    // 3. Orbital Period Score (20%) - Proxy for tidal locking and stability
+    let periodScore = 0;
+    const p = period.value;
+    if (p >= 20 && p <= 400) periodScore = 10;
+    else if (p >= 10 && p < 20) periodScore = 10 * ((p - 10) / 10);
+    else if (p > 400 && p <= 800) periodScore = 10 * (1 - ((p - 400) / 400));
+    else periodScore = 0;
+
+    // 4. Stellar Type Score (20%) - G-type is ideal
+    let starTypeScore = 3;
+    if (starType.includes('G')) starTypeScore = 10;
+    else if (starType.includes('K')) starTypeScore = 8;
+    else if (starType.includes('F')) starTypeScore = 7;
+    else if (starType.includes('M')) starTypeScore = 6;
+    
+    const totalScore = (tempScore * 0.4) + (radiusScore * 0.2) + (periodScore * 0.2) + (starTypeScore * 0.2);
+
+    let classification: Habitability['classification'] = 'Unlikely Habitable';
+    if (totalScore > 7) classification = 'Potentially Habitable';
+    else if (totalScore >= 4) classification = 'Marginal';
+    
+    // Generate reasoning
+    const reasons: string[] = [];
+    if (tempScore > 8) reasons.push("its estimated temperature is ideal for liquid water.");
+    // FIX: The 'temperature' property is a direct number, not an object with a 'value' property.
+    else if (tempScore < 4 && temperature > optimalTemp) reasons.push("it is likely too hot.");
+    // FIX: The 'temperature' property is a direct number, not an object with a 'value' property.
+    else if (tempScore < 4 && temperature < optimalTemp) reasons.push("it is likely too cold.");
+    else reasons.push("its temperature is suboptimal.");
+
+    if (radiusScore > 8) reasons.push("Its size suggests it is a rocky world, similar to Earth.");
+    else if (radiusScore < 4) reasons.push("Its size suggests it may be a gas giant or too small to retain an atmosphere.");
+    
+    if (starTypeScore > 8) reasons.push("It orbits a stable, Sun-like star.");
+    else if (starTypeScore < 7) reasons.push("its host star may be prone to flaring or have a short lifespan, impacting long-term habitability.");
+
+    const reasoning = `The '${classification}' rating is based on several factors. A key contributor is ${reasons.join(' Furthermore, ')}`;
+
+    return {
+        score: totalScore,
+        classification,
+        reasoning,
+        // FIX: The 'temperature' property is a direct number, not an object with a 'value' property.
+        inHabitableZone: temperature > 250 && temperature < 370,
+    };
+};
+
+/**
  * ADAPTER FUNCTION: Maps the raw AI JSON response to the strict PlanetAnalysis type.
  * This makes the app resilient to minor variations in the AI's output format.
  */
@@ -300,11 +371,12 @@ const mapAiResponseToPlanetAnalysis = (aiData: any): PlanetAnalysis => {
             composition: (aiData.atmosphere.compositionIndications || []).map((chem: string) => ({ chemical: chem, percentage: 0 })),
             description: aiData.atmosphere.potentialObservability || "No description."
         } : { composition: [], description: "Atmospheric data not available from model." },
-        habitability: aiData.habitability ? {
-            score: (aiData.habitability.hzdScore || 0) * 10,
-            inHabitableZone: !aiData.habitability.status?.toLowerCase().includes('unlikely'),
-            summary: aiData.habitability.reason || "No summary."
-        } : { score: 0, inHabitableZone: false, summary: "Habitability assessment not available from model." },
+        habitability: { // This will be overwritten by the calculation below
+            score: 0,
+            classification: 'Unknown',
+            reasoning: "Calculating...",
+            inHabitableZone: false,
+        },
         classification: {
             cnn: aiData.classification?.cnn || defaultClassification.cnn,
             randomForest: aiData.classification?.randomForest || defaultClassification.randomForest
@@ -319,6 +391,10 @@ const mapAiResponseToPlanetAnalysis = (aiData: any): PlanetAnalysis => {
             source: 'Archive'
         })) || [],
     };
+    
+    // Overwrite the AI's habitability assessment with our own calculated one for consistency
+    mapped.habitability = calculateHabitability(mapped.planet, mapped.star);
+
     return mapped;
 }
 

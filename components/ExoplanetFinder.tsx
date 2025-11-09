@@ -295,7 +295,9 @@ const ExoplanetFinder: React.FC = () => {
                                 <InjectionRecovery lightCurve={analysisResult.lightCurve} originalPeriod={analysisResult.detection.blsPeriod.value} originalDepth={analysisResult.detection.transitFitParameters.depth} />
                             )}
                             <MlPerformanceMetrics />
-                            <BayesianOptimization />
+                            {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
+                                <BayesianOptimization analysis={analysisResult} />
+                            )}
                         </div>
                     </div>
 

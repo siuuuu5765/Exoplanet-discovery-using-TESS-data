@@ -1,17 +1,37 @@
 // components/HabitabilityCard.tsx
 import React from 'react';
-import type { PlanetAnalysis } from '../types';
+import type { PlanetAnalysis, Habitability } from '../types';
 import { LeafIcon } from './Icons';
 import ChemicalComposition from './ChemicalComposition';
 
 interface HabitabilityCardProps {
-  habitability: PlanetAnalysis['habitability'];
+  habitability: Habitability;
   atmosphere: PlanetAnalysis['atmosphere'];
 }
 
-// FIX: This component displays a summary of the planet's potential habitability.
 const HabitabilityCard: React.FC<HabitabilityCardProps> = ({ habitability, atmosphere }) => {
-  const scoreColor = habitability.score > 7 ? 'text-green-400' : habitability.score > 4 ? 'text-yellow-400' : 'text-red-400';
+  const getClassificationStyle = (classification: Habitability['classification']) => {
+    switch (classification) {
+      case 'Potentially Habitable':
+        return {
+          textColor: 'text-green-400',
+          bgColor: 'bg-green-500/20',
+        };
+      case 'Marginal':
+        return {
+          textColor: 'text-yellow-400',
+          bgColor: 'bg-yellow-500/20',
+        };
+      case 'Unlikely Habitable':
+      default:
+        return {
+          textColor: 'text-red-400',
+          bgColor: 'bg-red-500/20',
+        };
+    }
+  };
+  
+  const classificationStyle = getClassificationStyle(habitability.classification);
   
   return (
     <div className="bg-space-blue/50 p-4 rounded-lg shadow-md border border-space-light backdrop-blur-sm h-full flex flex-col">
@@ -24,16 +44,19 @@ const HabitabilityCard: React.FC<HabitabilityCardProps> = ({ habitability, atmos
         <div className="flex flex-col justify-between">
           <div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">Habitability Score</p>
-              <p className={`text-5xl font-bold font-mono ${scoreColor}`}>{habitability.score.toFixed(1)}<span className="text-2xl text-gray-400">/10</span></p>
-            </div>
-            <div className={`text-center mt-3 p-2 rounded-md ${habitability.inHabitableZone ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-              <p className="font-bold text-sm">
-                {habitability.inHabitableZone ? 'Within Habitable Zone' : 'Outside Habitable Zone'}
+              <p className="text-sm text-gray-400">Classification</p>
+              <p className={`text-2xl font-bold font-display ${classificationStyle.textColor}`}>
+                {habitability.classification}
               </p>
+              <p className={`text-5xl font-bold font-mono ${classificationStyle.textColor} mt-2`}>
+                {habitability.score.toFixed(1)}
+                <span className="text-2xl text-gray-400">/10</span>
+              </p>
+              <p className="text-xs text-gray-400">Habitability Score</p>
             </div>
+            
             <p className="text-xs text-gray-300 mt-3 text-justify">
-              {habitability.summary}
+              <strong>Reasoning:</strong> {habitability.reasoning}
             </p>
           </div>
         </div>

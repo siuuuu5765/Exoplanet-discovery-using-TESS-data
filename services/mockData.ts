@@ -1,4 +1,5 @@
 // services/mockData.ts
+import { calculateHabitability } from './geminiService';
 import type { PlanetAnalysis, ClassificationPrediction } from '../types';
 
 // FIX: Generate a mock analysis object for demonstration or testing purposes.
@@ -76,6 +77,23 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
 
     const summary = `The analysis pipeline began with detrending the raw light curve to remove instrumental and stellar noise. A Box-fitting Least Squares (BLS) algorithm was applied, revealing a significant periodic signal at ${period.toFixed(2)} days. The light curve was then phase-folded to this period, clearly showing a transit-like dip which was used to derive the planet's radius. The signal was vetted by machine learning models, which confirmed its planetary characteristics.\n\nThe candidate's position in the habitable zone makes it a compelling target. Future research should focus on obtaining radial velocity measurements to confirm its mass and density. Subsequent atmospheric characterization with facilities like JWST could search for potential biosignatures.`;
 
+    const planetData = {
+        name: 'Mock Planet b',
+        period: { value: period, uncertainty: 0.001 },
+        radius: { value: planetRadius, uncertainty: 0.05 },
+        mass: { value: planetRadius * 1.2, uncertainty: 0.2 },
+        temperature: 250 + Math.random() * 100, // Random temp between 250-350K
+    };
+    
+    const starData = {
+        name: 'Mock Star Alpha',
+        type: ['G', 'K', 'M'][Math.floor(Math.random() * 3)] + '-type main-sequence',
+        apparentMagnitude: 10.5,
+        distance: 450,
+    };
+
+    const calculatedHabitability = calculateHabitability(planetData, starData);
+
     return {
         ticId: ticId,
         lightCurve,
@@ -96,19 +114,8 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
                 epoch: 1234.5678,
             },
         },
-        star: {
-            name: 'Mock Star Alpha',
-            type: 'G-type main-sequence',
-            apparentMagnitude: 10.5,
-            distance: 450,
-        },
-        planet: {
-            name: 'Mock Planet b',
-            period: { value: period, uncertainty: 0.001 },
-            radius: { value: planetRadius, uncertainty: 0.05 },
-            mass: { value: planetRadius * 1.2, uncertainty: 0.2 },
-            temperature: 350,
-        },
+        star: starData,
+        planet: planetData,
         atmosphere: {
             composition: [
                 { chemical: 'Nitrogen', percentage: 70 },
@@ -118,11 +125,7 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
             ],
             description: "A thick, nitrogen-dominated atmosphere with significant greenhouse gases.",
         },
-        habitability: {
-            score: 7.8,
-            inHabitableZone: true,
-            summary: "This Earth-sized planet orbits within the star's habitable zone, where liquid water could potentially exist on its surface. The estimated temperature and atmospheric composition are promising for habitability.",
-        },
+        habitability: calculatedHabitability,
         classification: {
             cnn: {
                 bestGuess: bestGuess,

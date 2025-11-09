@@ -62,7 +62,7 @@ The AI-assisted classification resulted in a primary classification of **'${best
 
 The derived physical parameters place ${planet.name} in the category of a Super-Earth or mini-Neptune. With a radius of ${radius.toFixed(2)} R⊕, it is a compelling target for further investigation. Its orbital period of ${period.toFixed(4)} days results in an estimated equilibrium temperature of ${planet.temperature} K, assuming zero albedo.
 
-The habitability assessment (${habitability.summary}) suggests that its potential for supporting life as we know it is ${habitability.score > 7 ? 'promising' : (habitability.score > 4 ? 'moderate' : 'low')}. Its position relative to the stellar habitable zone is a key factor in this assessment. The simulated atmospheric composition provides a theoretical basis for what future spectroscopic observations might find.
+The habitability assessment (${habitability.reasoning}) suggests that its potential for supporting life as we know it is ${habitability.score > 7 ? 'promising' : (habitability.score > 4 ? 'moderate' : 'low')}. Its position relative to the stellar habitable zone is a key factor in this assessment. The simulated atmospheric composition provides a theoretical basis for what future spectroscopic observations might find.
 
 ---
 

@@ -78,6 +78,13 @@ export interface Measurement {
     uncertainty: number;
 }
 
+export interface Habitability {
+    score: number; // out of 10
+    classification: 'Potentially Habitable' | 'Marginal' | 'Unlikely Habitable' | 'Unknown';
+    reasoning: string;
+    inHabitableZone: boolean;
+}
+
 // The main analysis object
 export interface PlanetAnalysis {
   ticId: string;
@@ -107,11 +114,7 @@ export interface PlanetAnalysis {
     composition: Chemical[];
     description: string;
   };
-  habitability?: {
-    score: number; // out of 10
-    inHabitableZone: boolean;
-    summary: string;
-  };
+  habitability?: Habitability;
   classification: {
       cnn: ClassifierOutput;
       randomForest: ClassifierOutput;
