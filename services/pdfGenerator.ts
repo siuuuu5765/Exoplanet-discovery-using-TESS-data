@@ -1,4 +1,3 @@
-
 // services/pdfGenerator.ts
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -28,24 +27,29 @@ export const generatePdfReport = async (analysis: PlanetAnalysis): Promise<void>
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = imgWidth / imgHeight;
         
-        const canvasPdfWidth = pdfWidth;
-        const canvasPdfHeight = canvasPdfWidth / ratio;
-        
-        let heightLeft = canvas.height * pdfWidth / canvas.width;
-        let position = 0;
-        
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, heightLeft);
-        heightLeft -= pdfHeight;
+        const contentStartY = 15; // Start content 15mm from top to leave space for header
 
-        while (heightLeft > 0) {
-            position = position - pdfHeight;
+        // Add custom header to the first page
+        pdf.setFontSize(10);
+        pdf.setTextColor('#00ffff'); // accent-cyan
+        pdf.text('TESS Exoplanet Discovery Report — Generated via AI Studio', pdfWidth / 2, 10, { align: 'center' });
+        pdf.setDrawColor('#475569'); // space-light
+        pdf.line(10, 12, pdfWidth - 10, 12); // A line under the header
+
+        const totalImageHeightInMM = canvas.height * pdfWidth / canvas.width;
+        let imageRenderedHeight = 0; // Tracks how much of the image we've already "printed"
+
+        // Add the first page of the image, starting below the header
+        pdf.addImage(imgData, 'PNG', 0, contentStartY, pdfWidth, totalImageHeightInMM);
+        imageRenderedHeight += (pdfHeight - contentStartY); // We used this much of the PDF page for the image
+
+        // Loop and add subsequent pages if the image is taller than what fits on the first page
+        while (imageRenderedHeight < totalImageHeightInMM) {
             pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, canvas.height * pdfWidth / canvas.width);
-            heightLeft -= pdfHeight;
+            // The position parameter shifts the source image up by the height we've already rendered
+            pdf.addImage(imgData, 'PNG', 0, -imageRenderedHeight, pdfWidth, totalImageHeightInMM);
+            imageRenderedHeight += pdfHeight;
         }
 
         pdf.save(`TESS_Report_TIC_${analysis.ticId}.pdf`);
