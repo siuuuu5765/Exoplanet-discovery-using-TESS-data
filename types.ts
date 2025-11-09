@@ -62,6 +62,7 @@ export interface ClassifierOutput {
     bestGuess: string;
     predictions: ClassificationPrediction[];
     featureImportance?: FeatureImportance[];
+    explanation?: string;
 }
 
 // For data source comparison

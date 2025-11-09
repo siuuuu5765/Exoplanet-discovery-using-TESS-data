@@ -1,5 +1,5 @@
 // services/mockData.ts
-import type { PlanetAnalysis } from '../types';
+import type { PlanetAnalysis, ClassificationPrediction } from '../types';
 
 // FIX: Generate a mock analysis object for demonstration or testing purposes.
 export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalysis => {
@@ -50,6 +50,28 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
         modelFit.push({ phase, brightness });
     }
 
+    // Generate realistic classification data
+    const isPlanet = Math.random() < 0.9;
+    const bestGuess = isPlanet ? 'Planet Candidate' : 'Eclipsing Binary';
+    const topConfidence = 0.8 + Math.random() * 0.19; // 80% to 99.9%
+    const remaining = 1.0 - topConfidence;
+    const c2 = remaining * (0.5 + Math.random() * 0.2);
+    const c3 = (remaining - c2) * (0.6 + Math.random() * 0.2);
+    const c4 = remaining - c2 - c3;
+
+    const classes = ['Planet Candidate', 'Eclipsing Binary', 'Stellar Variability', 'Noise'];
+    const otherClasses = classes.filter(c => c !== bestGuess);
+    const shuffledRemaining = [c2, c3, c4].sort(() => Math.random() - 0.5);
+
+    const cnnPredictions: ClassificationPrediction[] = [
+      { class: bestGuess, confidence: topConfidence },
+      { class: otherClasses[0], confidence: shuffledRemaining[0] },
+      { class: otherClasses[1], confidence: shuffledRemaining[1] },
+      { class: otherClasses[2], confidence: shuffledRemaining[2] },
+    ];
+    
+    const explanation = `Detected consistent ${period.toFixed(2)}-day periodic dips with a depth of ${(transitDepth * 100).toFixed(2)}%, corresponding to a ${planetRadius.toFixed(1)} Earth-radius object.`;
+
     return {
         ticId: ticId,
         lightCurve,
@@ -99,28 +121,20 @@ export const generateMockAnalysis = (ticId: string = 'mock-12345'): PlanetAnalys
         },
         classification: {
             cnn: {
-                bestGuess: 'Planet Candidate',
-                predictions: [
-                    { class: 'Planet Candidate', confidence: 0.98 },
-                    { class: 'Eclipsing Binary', confidence: 0.01 },
-                    { class: 'Stellar Variability', confidence: 0.01 },
-                    { class: 'Noise', confidence: 0.00 },
-                ],
+                bestGuess: bestGuess,
+                predictions: cnnPredictions,
+                explanation: explanation,
             },
             randomForest: {
-                bestGuess: 'Planet Candidate',
-                predictions: [
-                    { class: 'Planet Candidate', confidence: 0.95 },
-                    { class: 'Eclipsing Binary', confidence: 0.03 },
-                    { class: 'Stellar Variability', confidence: 0.02 },
-                    { class: 'Noise', confidence: 0.00 },
-                ],
+                bestGuess: bestGuess,
+                predictions: cnnPredictions.sort((a,b) => 0.5 - Math.random()), // slightly different order for variety
                 featureImportance: [
                     { feature: 'depth', score: 0.45 },
                     { feature: 'period', score: 0.30 },
                     { feature: 'duration', score: 0.15 },
                     { feature: 'snr', score: 0.10 },
-                ]
+                ],
+                explanation: explanation,
             },
         },
         research: {

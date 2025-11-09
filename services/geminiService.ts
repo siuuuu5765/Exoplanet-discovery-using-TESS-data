@@ -260,8 +260,16 @@ const mapAiResponseToPlanetAnalysis = (aiData: any): PlanetAnalysis => {
     const planetData = aiData.planet || aiData.planetCandidate;
 
     const defaultClassification = {
-        cnn: { bestGuess: 'Planet Candidate', predictions: [{ class: 'Planet Candidate', confidence: 0.99 }] },
-        randomForest: { bestGuess: 'Planet Candidate', predictions: [{ class: 'Planet Candidate', confidence: 0.99 }] }
+        cnn: { 
+            bestGuess: 'Planet Candidate', 
+            predictions: [{ class: 'Planet Candidate', confidence: 0.99 }],
+            explanation: 'A strong, periodic signal consistent with a planetary transit was detected.'
+        },
+        randomForest: { 
+            bestGuess: 'Planet Candidate', 
+            predictions: [{ class: 'Planet Candidate', confidence: 0.99 }],
+            explanation: 'Key features such as period and depth strongly indicate a planetary candidate.'
+        }
     };
     
     const mapped: PlanetAnalysis = {
@@ -324,11 +332,12 @@ export const fetchAndAnalyzeTicData = async (ticId: string, blsParams: BlsParame
     1.  **Simulate Analysis Parameters ONLY**: Generate a JSON object containing the high-level parameters and analysis results of an exoplanet observation.
     2.  **JSON ONLY**: Your entire response MUST be a single, valid JSON object.
     3.  **DO NOT Generate Data Arrays**: The JSON object should NOT include fields for 'lightCurve', 'blsPowerSpectrum', 'phaseFoldedLightCurve', 'transitFitModel', or 'radialVelocityCurve'. The application will generate these.
-    4.  **Include ALL Objects and Key Fields**: The JSON must contain the 'star', 'detection', and 'planet' objects. 
+    4.  **Include ALL Objects and Key Fields**: The JSON must contain the 'star', 'detection', 'planet', and 'classification' objects. 
         - The 'star' object MUST include 'name', 'type' (or 'stellarType'), 'apparentMagnitude', and 'distanceParsecs'.
         - The 'planet' object (or 'planetCandidate') MUST include 'name', 'orbitalPeriodDays', 'radiusEarth', 'massEarth', and 'equilibriumTemperatureK'.
+        - The 'classification' object MUST contain 'cnn' and 'randomForest' objects. Each should have 'bestGuess' (string), 'predictions' (an array of objects with 'class' ['Planet Candidate', 'Eclipsing Binary', 'Stellar Variability', 'Noise'] and 'confidence' keys, where confidences for all classes approximately sum to 1.0), and a new 'explanation' field (a short, one-sentence string summarizing the reason for the classification based on the data, e.g., 'Detected consistent 7.81-day periodic dips with a depth corresponding to a 2.3 Earth-radius planet.').
         - Also include plausible 'atmosphere', 'habitability', 'research', and 'comparisonData' objects.
-    5.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios.
+    5.  **Generate Plausible Science**: The data should be scientifically plausible. For known exoplanets, reflect their characteristics. For other TIC IDs, generate creative but realistic scenarios. The classification confidence scores should be realistic, not always 99%.
     6.  **Incorporate User Parameters**: Use the provided BLS parameters (periodRange, depthThreshold, snrCutoff) to inform the 'detection' part of your simulation. The simulated 'blsPeriod' should fall within the 'periodRange'.
     
     **User Task:**
@@ -464,8 +473,9 @@ export const analyzeTicIdForBatch = async (ticId: string, blsParams: BlsParamete
     Your instructions are:
     1.  **Simulate Core Data**: Generate a JSON object containing only the 'detection', 'classification', and 'planet' (or 'planetCandidate') fields.
     2.  **JSON ONLY**: Your entire response MUST be a single, valid JSON object.
-    3.  **Incorporate User Parameters**: Use the provided BLS parameters to inform the 'detection' simulation.
-    4.  **Efficiency**: This is for a batch job, so be quick and efficient.
+    3.  **Realistic Probabilities**: The 'classification' object should contain 'cnn' and 'randomForest' objects with a 'bestGuess' and a 'predictions' array. The confidence scores in the predictions should be varied and realistic, not always 99%.
+    4.  **Incorporate User Parameters**: Use the provided BLS parameters to inform the 'detection' simulation.
+    5.  **Efficiency**: This is for a batch job, so be quick and efficient.
 
     **User Task:**
     Generate a lightweight exoplanet analysis JSON object for TIC ID: ${ticId}.

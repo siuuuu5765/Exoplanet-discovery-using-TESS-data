@@ -12,6 +12,7 @@ const classificationInfo: { [key: string]: { color: string; description: string;
   'Eclipsing Binary': { color: 'bg-amber-500', description: 'Two stars orbiting each other, causing deep, often V-shaped eclipses.' },
   'Stellar Variability': { color: 'bg-sky-500', description: 'Natural brightness changes in the star itself, often due to starspots or pulsations.' },
   'Noise': { color: 'bg-red-500', description: 'Random fluctuations in the data with no discernible periodic signal, likely due to instrument effects.' },
+  'Unclear Signal': { color: 'bg-yellow-500', description: 'The signal characteristics are not distinct enough for a high-confidence classification. It may be a weak planetary signal or a combination of noise and stellar variability.' },
 };
 
 const ConfidenceBars: React.FC<{ predictions: ClassificationPrediction[] }> = ({ predictions }) => (
@@ -65,7 +66,16 @@ const MachineLearningClassifier: React.FC<MachineLearningClassifierProps> = ({ r
   const activeData: ClassifierOutput = activeModel === 'cnn' ? result.cnn : result.randomForest;
 
   const getBestGuessColor = (guess: string) => {
+      if (guess === 'Unclear Signal') return 'text-yellow-400';
       return classificationInfo[guess]?.color.replace('bg-', 'text-') || 'text-gray-200';
+  }
+
+  // Determine the display classification based on confidence
+  let displayGuess = activeData.bestGuess;
+  const planetCandidatePrediction = activeData.predictions.find(p => p.class === 'Planet Candidate');
+
+  if (activeData.bestGuess === 'Planet Candidate' && (planetCandidatePrediction?.confidence ?? 0) <= 0.85) {
+      displayGuess = 'Unclear Signal';
   }
 
   return (
@@ -92,8 +102,8 @@ const MachineLearningClassifier: React.FC<MachineLearningClassifierProps> = ({ r
       
       <div className="text-center mt-3">
           <p className="text-xs text-gray-400">Model Prediction:</p>
-          <p className={`text-lg font-bold font-display ${getBestGuessColor(activeData.bestGuess)}`}>
-              {activeData.bestGuess}
+          <p className={`text-lg font-bold font-display ${getBestGuessColor(displayGuess)}`}>
+              {displayGuess}
           </p>
       </div>
 
@@ -101,6 +111,13 @@ const MachineLearningClassifier: React.FC<MachineLearningClassifierProps> = ({ r
 
       {activeModel === 'rf' && activeData.featureImportance && (
           <FeatureImportanceChart features={activeData.featureImportance} />
+      )}
+
+      {activeData.explanation && (
+        <div className="mt-4 border-t border-space-light pt-3">
+            <h5 className="text-xs text-gray-400 font-semibold mb-1">Model Rationale</h5>
+            <p className="text-sm text-gray-300 italic">"{activeData.explanation}"</p>
+        </div>
       )}
     </div>
   );
