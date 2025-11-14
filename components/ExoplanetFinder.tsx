@@ -1,5 +1,5 @@
 // components/ExoplanetFinder.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { FullAnalysis, BatchResult } from '../types';
 import { getSystemProfile } from '../services/systemProfileService';
@@ -24,18 +24,7 @@ import ResearchSummary from './ResearchSummary';
 import Chatbot from './Chatbot';
 import { DownloadIcon } from './Icons';
 
-// Add type declarations for the aistudio window object
-// FIX: Define a named interface for aistudio and use it in the global declaration to avoid type conflicts.
-// FIX: Moved the AIStudio interface inside the `declare global` block to correctly augment the global Window type from within a module file.
-declare global {
-    interface AIStudio {
-        hasSelectedApiKey: () => Promise<boolean>;
-        openSelectKey: () => Promise<void>;
-    }
-    interface Window {
-        aistudio?: AIStudio;
-    }
-}
+// The window.aistudio declarations are no longer needed as the user-selection flow is removed.
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
@@ -61,7 +50,7 @@ const ExoplanetFinder: React.FC = () => {
     const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
     const [batchProgress, setBatchProgress] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
-    const [apiKeyReady, setApiKeyReady] = useState(false);
+    // apiKeyReady state and related useEffect/handlers are removed.
     const [blsParams, setBlsParams] = useState<{
         periodRange: [number, number];
         snr: number;
@@ -72,38 +61,10 @@ const ExoplanetFinder: React.FC = () => {
         transitDepth: 100,
     });
 
-    useEffect(() => {
-        const checkApiKey = async () => {
-            if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-                const hasKey = await window.aistudio.hasSelectedApiKey();
-                setApiKeyReady(hasKey);
-            }
-        };
-        checkApiKey();
-    }, []);
-
-    const handleSelectApiKey = async () => {
-        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-            try {
-                await window.aistudio.openSelectKey();
-                // Assume success to avoid race conditions and re-enable UI
-                setApiKeyReady(true);
-                setError(null); // Clear previous errors
-            } catch (error) {
-                console.error("Error opening API key selection:", error);
-                setError("Could not open the API key selection dialog.");
-            }
-        }
-    };
-
-
     const handleAnalyze = async (idToAnalyze: string) => {
         if (!idToAnalyze) return;
         
-        if (!apiKeyReady) {
-            setError("Please select a Gemini API Key before running an analysis.");
-            return;
-        }
+        // The API key check is removed from here. The call to geminiService will handle it.
 
         setIsLoading(true);
         setError(null);
@@ -149,9 +110,9 @@ const ExoplanetFinder: React.FC = () => {
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during analysis.';
+            // Simplified error message for API key issues.
             if (errorMessage.toLowerCase().includes('api key') || errorMessage.toLowerCase().includes('permission denied')) {
-                setError('There was an issue with your API Key. Please select a valid key and try again.');
-                setApiKeyReady(false);
+                setError('A valid API key is not configured for this application. Please ensure the environment is set up correctly.');
             } else {
                 setError(errorMessage);
             }
@@ -217,19 +178,7 @@ const ExoplanetFinder: React.FC = () => {
 
     return (
         <div className="container mx-auto">
-             {!apiKeyReady && (
-                <div className="max-w-xl mx-auto my-4 bg-yellow-900/50 p-4 rounded-lg shadow-lg border border-yellow-400 text-center animate-fade-in">
-                    <h3 className="text-lg font-bold text-accent-gold">API Key Required</h3>
-                    <p className="text-yellow-200 my-2">To use the AI-powered features of this application, you need to select a Gemini API key.</p>
-                     <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-accent-cyan hover:underline mb-3 block">Learn about billing</a>
-                    <button
-                        onClick={handleSelectApiKey}
-                        className="bg-accent-gold text-space-dark font-bold py-2 px-6 rounded-md hover:bg-accent-gold/80 transition-colors"
-                    >
-                        Select API Key
-                    </button>
-                </div>
-            )}
+             {/* API Key selection UI is removed. */}
 
             {/* Input Section */}
             <div className="max-w-xl mx-auto bg-space-blue/50 p-4 rounded-lg shadow-lg border border-space-light backdrop-blur-sm">
@@ -241,11 +190,11 @@ const ExoplanetFinder: React.FC = () => {
                         onKeyPress={handleKeyPress}
                         placeholder="Enter a TESS Input Catalog (TIC) ID"
                         className="flex-1 bg-space-dark p-3 rounded-l-md border-0 focus:ring-2 focus:ring-accent-magenta outline-none"
-                        disabled={isLoading || !apiKeyReady}
+                        disabled={isLoading}
                     />
                     <button
                         onClick={() => handleAnalyze(ticId)}
-                        disabled={isLoading || !ticId.trim() || !apiKeyReady}
+                        disabled={isLoading || !ticId.trim()}
                         className="bg-accent-magenta text-white font-bold py-3 px-6 rounded-r-md hover:bg-accent-magenta/80 transition-colors disabled:opacity-50"
                     >
                         {isLoading ? 'Analyzing...' : 'Analyze'}
@@ -255,7 +204,7 @@ const ExoplanetFinder: React.FC = () => {
 
             {error && <div className="text-center text-red-400 mt-4 animate-fade-in max-w-xl mx-auto bg-red-900/50 p-3 rounded-lg border border-red-400"><strong>Error:</strong> {error}</div>}
             
-            <BlsParameters params={blsParams} onParamsChange={setBlsParams} disabled={isLoading || !apiKeyReady} />
+            <BlsParameters params={blsParams} onParamsChange={setBlsParams} disabled={isLoading} />
             <BatchAnalysis onRunBatch={handleRunBatch} disabled={isLoading} progress={batchProgress} />
             <BatchResultsTable results={batchResults} />
 
@@ -268,7 +217,7 @@ const ExoplanetFinder: React.FC = () => {
             )}
 
             {!isLoading && !analysisResult && batchResults.length === 0 && (
-                <FeaturedSystems onSelect={handleSelectTarget} disabled={isLoading || !apiKeyReady} />
+                <FeaturedSystems onSelect={handleSelectTarget} disabled={isLoading} />
             )}
 
             {analysisResult && (
