@@ -52,16 +52,21 @@ const stringifyProfile = (profile: VerifiedSystemProfile): string => {
     return JSON.stringify(profileCopy, replacer, 2);
 };
 
-export const generateAiAnalysis = async (
+export const generateComprehensiveAiReport = async (
     profile: VerifiedSystemProfile,
     blsParams: { periodRange: [number, number]; snr: number; transitDepth: number }
-): Promise<{ aiAnalysis: string; comparisonData: ComparisonData[] }> => {
+): Promise<{
+    aiAnalysis: string;
+    comparisonData: ComparisonData[];
+    researchSummary: string;
+    atmosphericComposition: AtmosphericComposition;
+}> => {
     const ai = getAiClient();
     const model = 'gemini-2.5-pro';
     const profileString = stringifyProfile(profile);
 
     const prompt = `
-        As an expert astrophysicist, analyze the provided verified astronomical data for the system around TIC ${profile.TIC_ID}.
+        As an expert astrophysicist, conduct a comprehensive analysis of the provided astronomical data for the system around TIC ${profile.TIC_ID}.
 
         **Verified Data:**
         \`\`\`json
@@ -73,17 +78,20 @@ export const generateAiAnalysis = async (
         - Signal-to-Noise Ratio (SNR) Threshold: ${blsParams.snr}
         - Minimum Transit Depth Searched: ${blsParams.transitDepth} ppm
 
-        Based on all the information above, provide a concise scientific analysis in Markdown format. Address the following:
-        1.  **System Overview:** Briefly describe the host star's type, age, and characteristics.
-        2.  **Planet Candidate Analysis:** Evaluate the planet candidate. Discuss its size, orbit, and potential composition (e.g., rocky, gas giant, ice giant) based on its radius and mass.
-        3.  **Confidence Assessment:** Comment on the likelihood that this is a genuine exoplanet signal, considering the data sources and search parameters.
+        Based on all available information, perform the following tasks and provide the output in a single, consolidated JSON object.
 
-        Finally, create a comparison table of the planet candidate against Earth and Jupiter in a JSON array format.
+        **Tasks:**
+        1.  **Scientific Analysis:** Provide a concise scientific analysis in Markdown format. Address:
+            - A brief overview of the host star.
+            - An evaluation of the planet candidate (size, orbit, potential composition).
+            - A confidence assessment of the signal.
+        2.  **Comparison Table:** Create a comparison table of the planet candidate against Earth and Jupiter.
+        3.  **Atmospheric Prediction:** Predict a plausible atmospheric composition. Consider the planet's mass, radius, temperature, and the star's characteristics. Provide the top 3-5 gases and a scientific rationale.
+        4.  **Research Proposal:** Propose 3-4 compelling follow-up research questions or observation strategies as a Markdown bulleted list.
 
-        **Output format MUST be a single JSON object with two keys: "aiAnalysis" (string, containing your Markdown analysis) and "comparisonData" (an array of objects).**
-        Example for comparisonData: [{"parameter": "Radius (Earth=1)", "candidate": "1.6", "earth": "1", "jupiter": "11.2"}]
+        **Output format MUST be a single JSON object with four keys: "aiAnalysis" (string), "comparisonData" (array of objects), "atmosphericComposition" (object), and "researchSummary" (string).**
     `;
-    
+
     // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
     const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
         model: model,
@@ -106,9 +114,28 @@ export const generateAiAnalysis = async (
                             },
                             required: ['parameter', 'candidate', 'earth', 'jupiter']
                         }
-                    }
+                    },
+                    atmosphericComposition: {
+                        type: Type.OBJECT,
+                        properties: {
+                            gases: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        gas: { type: Type.STRING },
+                                        percentage: { type: Type.NUMBER },
+                                    },
+                                    required: ['gas', 'percentage']
+                                }
+                            },
+                            rationale: { type: Type.STRING }
+                        },
+                        required: ['gases', 'rationale']
+                    },
+                    researchSummary: { type: Type.STRING }
                 },
-                required: ['aiAnalysis', 'comparisonData']
+                required: ['aiAnalysis', 'comparisonData', 'atmosphericComposition', 'researchSummary']
             }
         }
     }));
@@ -119,11 +146,14 @@ export const generateAiAnalysis = async (
     const parsedJson = JSON.parse(text);
 
     // Basic validation
-    if (typeof parsedJson.aiAnalysis === 'string' && Array.isArray(parsedJson.comparisonData)) {
-        return {
-            aiAnalysis: parsedJson.aiAnalysis,
-            comparisonData: parsedJson.comparisonData as ComparisonData[],
-        };
+    if (
+        typeof parsedJson.aiAnalysis === 'string' &&
+        Array.isArray(parsedJson.comparisonData) &&
+        typeof parsedJson.researchSummary === 'string' &&
+        typeof parsedJson.atmosphericComposition?.rationale === 'string' &&
+        Array.isArray(parsedJson.atmosphericComposition?.gases)
+    ) {
+        return parsedJson;
     } else {
         throw new Error("AI response did not match the expected JSON format.");
     }
@@ -206,107 +236,6 @@ export const generateHabitabilityAnalysis = async (profile: VerifiedSystemProfil
         Components: components,
         Interpretation: interpretation,
     };
-};
-
-
-export const generateAtmosphericComposition = async (profile: VerifiedSystemProfile): Promise<AtmosphericComposition> => {
-    const ai = getAiClient();
-    const model = 'gemini-2.5-pro';
-    const profileString = stringifyProfile(profile);
-
-    const prompt = `
-        Based on the provided verified data for the exoplanet system TIC ${profile.TIC_ID}, predict a plausible atmospheric composition.
-        Consider the planet's mass, radius, equilibrium temperature, and the star's characteristics.
-
-        **Verified Data:**
-        \`\`\`json
-        ${profileString}
-        \`\`\`
-
-        Your response MUST be a JSON object with two keys:
-        1. "gases": An array of objects, each with "gas" (string) and "percentage" (number). List the top 3-5 most likely gases. Percentages should sum to approximately 100.
-        2. "rationale": A brief Markdown string explaining your reasoning based on the provided data (e.g., "Given the planet's high mass and low temperature, it likely retained a dense, hydrogen-dominated atmosphere...").
-    `;
-
-    // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
-    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
-        model: model,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    gases: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                gas: { type: Type.STRING },
-                                percentage: { type: Type.NUMBER },
-                            },
-                            required: ['gas', 'percentage']
-                        }
-                    },
-                    rationale: { type: Type.STRING }
-                },
-                required: ['gases', 'rationale']
-            }
-        }
-    }));
-    const text = response.text;
-    if (!text) {
-        throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
-    }
-    const parsedJson = JSON.parse(text);
-
-    if (typeof parsedJson.rationale === 'string' && Array.isArray(parsedJson.gases)) {
-        return parsedJson as AtmosphericComposition;
-    } else {
-         throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
-    }
-};
-
-export const generateResearchSummary = async (profile: VerifiedSystemProfile): Promise<string> => {
-    const ai = getAiClient();
-    const model = 'gemini-2.5-pro';
-    const profileString = stringifyProfile(profile);
-
-    const prompt = `
-        As an expert astrophysicist reviewing the provided data for TIC ${profile.TIC_ID}, propose 3-4 compelling follow-up research questions or observation strategies.
-        
-        **Verified Data:**
-        \`\`\`json
-        ${profileString}
-        \`\`\`
-
-        Format your response as a concise Markdown bulleted list. Focus on scientifically valuable next steps, such as:
-        - Specific JWST or ground-based telescope observations to characterize the atmosphere.
-        - Radial velocity follow-up campaigns to refine mass measurements.
-        - Searches for additional planets in the system.
-
-        The response must be a single JSON object with one key: "summary" (string).
-    `;
-    // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
-    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
-        model: model,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    summary: { type: Type.STRING }
-                },
-                required: ['summary']
-            }
-        }
-    }));
-    const text = response.text;
-    if (!text) {
-        throw new Error("Error generating research summary: AI response text is empty.");
-    }
-    return JSON.parse(text).summary;
 };
 
 // FIX: Refactor to use systemInstruction and fix duplicate message bug.

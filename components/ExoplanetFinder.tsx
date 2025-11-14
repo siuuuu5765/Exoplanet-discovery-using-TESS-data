@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import type { FullAnalysis, BatchResult } from '../types';
 import { getSystemProfile } from '../services/systemProfileService';
 import { generateMockVisuals } from '../services/mockData';
-import { generateAiAnalysis, generateResearchSummary, getChatbotResponse, generateHabitabilityAnalysis, generateAtmosphericComposition } from '../services/geminiService';
+import { generateComprehensiveAiReport, getChatbotResponse, generateHabitabilityAnalysis } from '../services/geminiService';
 import { generatePdfReport } from '../services/reportGenerator';
 
 // Import all necessary components
@@ -84,17 +84,16 @@ const ExoplanetFinder: React.FC = () => {
             setLoadingMessage('Generating Visualizations...');
             const visuals = generateMockVisuals(profile);
 
-            setLoadingMessage('Running Foundational AI Analysis...');
-            const { aiAnalysis, comparisonData } = await generateAiAnalysis(profile, blsParams);
-
-            setLoadingMessage('Proposing Follow-up Research...');
-            const researchSummary = await generateResearchSummary(profile);
+            setLoadingMessage('Generating Comprehensive AI Analysis...');
+            const {
+                aiAnalysis,
+                comparisonData,
+                researchSummary,
+                atmosphericComposition
+            } = await generateComprehensiveAiReport(profile, blsParams);
 
             setLoadingMessage('Assessing Habitability...');
             const habitabilityAnalysis = await generateHabitabilityAnalysis(profile);
-
-            setLoadingMessage('Predicting Atmospheric Composition...');
-            const atmosphericComposition = await generateAtmosphericComposition(profile);
             
             const finalResult: FullAnalysis = {
                 profile,
