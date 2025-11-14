@@ -16,7 +16,7 @@ const BlsParameters: React.FC<BlsParametersProps> = ({ params, onParamsChange, d
     const [isOpen, setIsOpen] = useState(false);
 
     const handleRangeChange = (index: 0 | 1, value: string) => {
-        const newRange = [...params.periodRange] as [number, number];
+        const newRange: [number, number] = [params.periodRange[0], params.periodRange[1]];
         newRange[index] = parseFloat(value) || 0;
         onParamsChange({ ...params, periodRange: newRange });
     };

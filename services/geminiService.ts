@@ -72,6 +72,9 @@ export const generateAiAnalysis = async (
             }
         });
         const text = response.text;
+        if (!text) {
+            throw new Error("AI response did not match the expected JSON format.");
+        }
         const parsedJson = JSON.parse(text);
 
         // Basic validation
@@ -217,6 +220,9 @@ export const generateAtmosphericComposition = async (profile: VerifiedSystemProf
             }
         });
         const text = response.text;
+        if (!text) {
+            throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
+        }
         const parsedJson = JSON.parse(text);
 
         if (typeof parsedJson.rationale === 'string' && Array.isArray(parsedJson.gases)) {
@@ -268,6 +274,10 @@ export const generateResearchSummary = async (profile: VerifiedSystemProfile): P
             }
         });
         const text = response.text;
+        if (!text) {
+            console.error("Error generating research summary: AI response text is empty.");
+            return "Failed to generate research summary.";
+        }
         return JSON.parse(text).summary;
     } catch (error) {
         console.error("Error generating research summary:", error);
@@ -297,7 +307,7 @@ export const getChatbotResponse = async (profile: VerifiedSystemProfile, history
             model: model,
             contents: contents as any,
         });
-        return response.text;
+        return response.text ?? "I'm sorry, I encountered an error trying to process your question.";
     } catch (error) {
         console.error("Chatbot API error:", error);
         return "I'm sorry, I encountered an error trying to process your question.";
