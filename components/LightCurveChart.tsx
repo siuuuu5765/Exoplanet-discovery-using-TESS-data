@@ -74,7 +74,7 @@ const LightCurveChart: React.FC<LightCurveChartProps> = ({ data, period, epoch, 
       const yMax = Math.max(...data.map(p => p.brightness));
       const yRangePadding = (yMax - yMin) * 0.1; // Add 10% padding
 
-      const layout: Partial<Plotly.Layout> = {
+      const layout: any = {
         title: {
             text: 'Host Star Brightness Over Time (TESS Light Curve)',
             font: {
@@ -114,7 +114,7 @@ const LightCurveChart: React.FC<LightCurveChartProps> = ({ data, period, epoch, 
         hovermode: 'x unified',
       };
       
-      const config: Partial<Plotly.Config> = {
+      const config: any = {
         responsive: true,
         displaylogo: false,
         modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']

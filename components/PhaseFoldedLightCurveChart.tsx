@@ -37,7 +37,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
 
       const yDomainMin = Math.min(...data.map(p => p.brightness)) - 0.001;
 
-      const layout: Partial<Plotly.Layout> = {
+      const layout: any = {
         title: {
             text: 'Phase-Folded Host Star Brightness & Transit Model',
             font: {
@@ -78,7 +78,7 @@ const PhaseFoldedLightCurveChart: React.FC<PhaseFoldedLightCurveChartProps> = ({
         hovermode: 'x unified',
       };
       
-      const config: Partial<Plotly.Config> = {
+      const config: any = {
         responsive: true,
         displaylogo: false,
         modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']

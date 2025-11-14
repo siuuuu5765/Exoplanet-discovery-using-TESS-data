@@ -10,7 +10,7 @@ interface PlanetVisualizerProps {
 
 const PlanetVisualizer: React.FC<PlanetVisualizerProps> = ({ profile }) => {
     const chartRef = useRef<HTMLDivElement>(null);
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | null>(null);
     const { Star, Planet } = profile;
 
     const getOrbitColor = (temp: number | 'Not Available') => {
@@ -61,7 +61,7 @@ const PlanetVisualizer: React.FC<PlanetVisualizerProps> = ({ profile }) => {
                 `Temp: ${Planet.Equilibrium_Temperature_K} K<extra></extra>`,
         };
         
-        const layout: Partial<Plotly.Layout> = {
+        const layout: any = {
             title: {
                 text: 'Orbital System Visualization',
                 font: { family: 'Orbitron, sans-serif', size: 16, color: '#00ffff' },
@@ -73,7 +73,7 @@ const PlanetVisualizer: React.FC<PlanetVisualizerProps> = ({ profile }) => {
             margin: { l: 20, r: 20, b: 20, t: 40 }, hovermode: 'closest',
         };
         
-        const config: Partial<Plotly.Config> = {
+        const config: any = {
             responsive: true, displaylogo: false, modeBarButtonsToRemove: ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian', 'toggleSpikelines']
         };
 

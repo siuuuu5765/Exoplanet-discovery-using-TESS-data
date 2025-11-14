@@ -47,7 +47,11 @@ const ExoplanetFinder: React.FC = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
     const [batchProgress, setBatchProgress] = useState('');
-    const [blsParams, setBlsParams] = useState({
+    const [blsParams, setBlsParams] = useState<{
+        periodRange: [number, number];
+        snr: number;
+        transitDepth: number;
+    }>({
         periodRange: [0.5, 30],
         snr: 5,
         transitDepth: 100,

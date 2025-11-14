@@ -26,7 +26,7 @@ const BlsPowerSpectrumChart: React.FC<BlsPowerSpectrumChartProps> = ({ data, det
             
             const maxPower = Math.max(...data.map(p => p.power));
 
-            const layout: Partial<Plotly.Layout> = {
+            const layout: any = {
                 title: {
                     text: 'Box-Least Squares (BLS) Periodogram',
                     font: { family: 'Orbitron, sans-serif', size: 18, color: '#00ffff' },
@@ -71,7 +71,7 @@ const BlsPowerSpectrumChart: React.FC<BlsPowerSpectrumChartProps> = ({ data, det
                  hovermode: 'x unified',
             };
 
-            const config: Partial<Plotly.Config> = {
+            const config: any = {
                 responsive: true,
                 displaylogo: false,
                 modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']
