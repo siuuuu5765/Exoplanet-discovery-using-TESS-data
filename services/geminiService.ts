@@ -4,7 +4,7 @@ import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import type { VerifiedSystemProfile, ComparisonData, HabitabilityAnalysis, AtmosphericComposition } from '../types';
 
 // --- Retry Logic for API Calls ---
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 
 /**
  * A wrapper function that adds retry logic with exponential backoff to an API call.
@@ -57,7 +57,7 @@ export const generateAiAnalysis = async (
     blsParams: { periodRange: [number, number]; snr: number; transitDepth: number }
 ): Promise<{ aiAnalysis: string; comparisonData: ComparisonData[] }> => {
     const ai = getAiClient();
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-2.5-pro';
     const profileString = stringifyProfile(profile);
 
     const prompt = `
@@ -211,7 +211,7 @@ export const generateHabitabilityAnalysis = async (profile: VerifiedSystemProfil
 
 export const generateAtmosphericComposition = async (profile: VerifiedSystemProfile): Promise<AtmosphericComposition> => {
     const ai = getAiClient();
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-2.5-pro';
     const profileString = stringifyProfile(profile);
 
     const prompt = `
@@ -269,7 +269,7 @@ export const generateAtmosphericComposition = async (profile: VerifiedSystemProf
 
 export const generateResearchSummary = async (profile: VerifiedSystemProfile): Promise<string> => {
     const ai = getAiClient();
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-2.5-pro';
     const profileString = stringifyProfile(profile);
 
     const prompt = `
