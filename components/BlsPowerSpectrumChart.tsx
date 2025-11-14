@@ -1,6 +1,6 @@
 // components/BlsPowerSpectrumChart.tsx
 import React, { useEffect, useRef } from 'react';
-import * as Plotly from 'plotly.js-dist-min';
+import Plotly from 'plotly.js-dist-min';
 import type { BlsResultPoint } from '../types';
 
 interface BlsPowerSpectrumChartProps {

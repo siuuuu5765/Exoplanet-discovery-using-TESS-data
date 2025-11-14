@@ -1,7 +1,7 @@
 // components/PhaseFoldedLightCurveChart.tsx
 
 import React, { useEffect, useRef } from 'react';
-import * as Plotly from 'plotly.js-dist-min';
+import Plotly from 'plotly.js-dist-min';
 import type { PhaseFoldedPoint } from '../types';
 
 interface PhaseFoldedLightCurveChartProps {
