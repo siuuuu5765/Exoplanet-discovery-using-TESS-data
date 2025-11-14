@@ -26,6 +26,7 @@ export interface VerifiedSystemProfile {
     Planet_Radius_Rearth: number | 'Not Available';
     Planet_Mass_Mearth: number | 'Not Available';
     Equilibrium_Temperature_K: number | 'Not Available';
+    SemiMajorAxis_AU: number | 'Not Available';
   };
   Source: {
     Distance: string;

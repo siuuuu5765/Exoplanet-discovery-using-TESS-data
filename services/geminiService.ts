@@ -113,10 +113,9 @@ export const generateHabitabilityAnalysis = async (profile: VerifiedSystemProfil
         missingParams.push("Equilibrium Temperature");
     }
 
-    // 2. Stellar Flux Score (Requires SemiMajorAxis_AU, which is not in the current VerifiedSystemProfile)
-    // As per the type definition, this will remain 'Not Available' unless the type is updated.
+    // 2. Stellar Flux Score
     const L_sun = Star.Luminosity_Lsun;
-    const a_au = (Planet as any).SemiMajorAxis_AU; 
+    const a_au = Planet.SemiMajorAxis_AU; 
     if (typeof L_sun === 'number' && typeof a_au === 'number' && a_au > 0) {
         const flux = L_sun / (a_au * a_au);
         const fluxScore = Math.max(0, 1 - Math.abs(flux - 1) / 1);

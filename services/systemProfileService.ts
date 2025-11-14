@@ -51,7 +51,8 @@ const createEmptyProfile = (ticId: string): VerifiedSystemProfile => ({
     Orbital_Period_days: 'Not Available',
     Planet_Radius_Rearth: 'Not Available',
     Planet_Mass_Mearth: 'Not Available',
-    Equilibrium_Temperature_K: 'Not Available'
+    Equilibrium_Temperature_K: 'Not Available',
+    SemiMajorAxis_AU: 'Not Available'
   },
   Source: {
     Distance: 'Not Available',
@@ -104,6 +105,7 @@ const mergeDataPriority = (
         if (nasa.Planet_Radius_Rearth) profile.Planet.Planet_Radius_Rearth = nasa.Planet_Radius_Rearth;
         if (nasa.Planet_Mass_Mearth) profile.Planet.Planet_Mass_Mearth = nasa.Planet_Mass_Mearth;
         if (nasa.Equilibrium_Temperature_K) profile.Planet.Equilibrium_Temperature_K = nasa.Equilibrium_Temperature_K;
+        if (nasa.SemiMajorAxis_AU) profile.Planet.SemiMajorAxis_AU = nasa.SemiMajorAxis_AU;
     }
 
     // Final check for star name if still unavailable

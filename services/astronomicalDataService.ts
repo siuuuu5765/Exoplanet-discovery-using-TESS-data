@@ -119,6 +119,7 @@ export const fetchNASAPlanetData = async (ticId: string): Promise<any> => {
             Planet_Radius_Rearth: 1.07,
             Planet_Mass_Mearth: 1.27,
             Equilibrium_Temperature_K: 234,
+            SemiMajorAxis_AU: 0.0485
         },
         '233544353': {
             Name: 'Kepler-186 f',
@@ -126,6 +127,7 @@ export const fetchNASAPlanetData = async (ticId: string): Promise<any> => {
             Planet_Radius_Rearth: 1.17,
             Planet_Mass_Mearth: 1.4, // Estimated
             Equilibrium_Temperature_K: 188,
+            SemiMajorAxis_AU: 0.432
         },
         '200164267': {
             Name: 'TRAPPIST-1 e',
@@ -133,6 +135,7 @@ export const fetchNASAPlanetData = async (ticId: string): Promise<any> => {
             Planet_Radius_Rearth: 0.92,
             Planet_Mass_Mearth: 0.69,
             Equilibrium_Temperature_K: 251,
+            SemiMajorAxis_AU: 0.029
         },
     };
     return nasaArchive[ticId] ?? {};
