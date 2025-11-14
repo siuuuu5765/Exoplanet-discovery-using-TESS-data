@@ -1,39 +1,24 @@
 // components/ResearchSummary.tsx
 import React from 'react';
-import Markdown from 'react-markdown';
-import { DocumentTextIcon } from './Icons';
+import ReactMarkdown from 'react-markdown';
+import { BeakerIcon } from './Icons';
 
 interface ResearchSummaryProps {
-  summary: string;
-  abstract: string;
+    summary: string;
 }
 
-const ResearchSummary: React.FC<ResearchSummaryProps> = ({ summary, abstract }) => {
-  return (
-    <div className="space-y-6">
-      {/* Research Abstract Card */}
-      <div className="bg-space-blue/50 p-6 rounded-lg shadow-md border border-accent-gold/50 backdrop-blur-sm">
-        <h3 className="text-lg font-bold font-display text-accent-gold mb-3 flex items-center">
-          <DocumentTextIcon className="w-6 h-6 mr-2" />
-          Research Abstract
-        </h3>
-        <div className="prose prose-invert prose-sm max-w-none text-gray-300">
-          <Markdown>{abstract}</Markdown>
+const ResearchSummary: React.FC<ResearchSummaryProps> = ({ summary }) => {
+    return (
+        <div className="animate-fade-in bg-space-dark/30 p-6 rounded-lg border border-space-light/50">
+            <h3 className="font-display text-accent-gold text-xl flex items-center mb-4">
+                <BeakerIcon className="w-6 h-6 mr-3" />
+                Proposed Follow-Up Research
+            </h3>
+            <div className="prose prose-invert max-w-none">
+                <ReactMarkdown>{summary}</ReactMarkdown>
+            </div>
         </div>
-      </div>
-      
-      {/* Research Summary Card */}
-      <div className="bg-space-blue/50 p-6 rounded-lg shadow-md border border-space-light backdrop-blur-sm">
-        <h3 className="text-lg font-bold font-display text-accent-cyan mb-3 flex items-center">
-          <DocumentTextIcon className="w-6 h-6 mr-2" />
-          Full Research Summary
-        </h3>
-        <div className="prose prose-invert prose-sm max-w-none text-gray-300">
-          <Markdown>{summary}</Markdown>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default ResearchSummary;

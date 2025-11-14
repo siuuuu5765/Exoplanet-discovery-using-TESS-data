@@ -1,98 +1,83 @@
 // components/BlsParameters.tsx
-
 import React, { useState } from 'react';
-import type { BlsParameters } from '../types';
 import { SlidersIcon } from './Icons';
 
 interface BlsParametersProps {
-  params: BlsParameters;
-  setParams: React.Dispatch<React.SetStateAction<BlsParameters>>;
-  disabled: boolean;
+    params: {
+        periodRange: [number, number];
+        snr: number;
+        transitDepth: number;
+    };
+    onParamsChange: (newParams: BlsParametersProps['params']) => void;
+    disabled: boolean;
 }
 
-const BlsParametersComponent: React.FC<BlsParametersProps> = ({ params, setParams, disabled }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const BlsParameters: React.FC<BlsParametersProps> = ({ params, onParamsChange, disabled }) => {
+    const [isOpen, setIsOpen] = useState(false);
 
-  const handleRangeChange = (e: React.ChangeEvent<HTMLInputElement>, index: 0 | 1) => {
-    const value = parseFloat(e.target.value);
-    const newRange = [...params.periodRange] as [number, number];
-    newRange[index] = value;
-    if (newRange[0] > newRange[1]) {
-        if (index === 0) newRange[1] = newRange[0];
-        else newRange[0] = newRange[1];
-    }
-    setParams(prev => ({ ...prev, periodRange: newRange }));
-  };
+    const handleRangeChange = (index: 0 | 1, value: string) => {
+        const newRange = [...params.periodRange] as [number, number];
+        newRange[index] = parseFloat(value) || 0;
+        onParamsChange({ ...params, periodRange: newRange });
+    };
 
-  return (
-    <div className="max-w-xl mx-auto mt-4">
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
-        className="w-full flex items-center justify-center text-sm font-semibold text-gray-400 hover:text-white transition-colors py-2"
-      >
-        <SlidersIcon className="w-5 h-5 mr-2" />
-        {isOpen ? 'Hide' : 'Show'} Advanced Analysis Parameters
-      </button>
-      {isOpen && (
-        <div className="bg-space-blue/50 p-4 rounded-lg mt-2 border border-space-light animate-fade-in-down">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <label className="block text-gray-300 font-semibold mb-1">Period Range (days)</label>
-              <div className="flex items-center gap-2">
-                <input 
-                  type="number" 
-                  value={params.periodRange[0]}
-                  onChange={e => handleRangeChange(e, 0)}
-                  className="w-full bg-space-dark text-center p-1 rounded border border-space-light"
-                  disabled={disabled}
-                  min="0.1"
-                  step="0.1"
-                />
-                <span>-</span>
-                <input 
-                  type="number" 
-                  value={params.periodRange[1]}
-                  onChange={e => handleRangeChange(e, 1)}
-                  className="w-full bg-space-dark text-center p-1 rounded border border-space-light"
-                  disabled={disabled}
-                  min={params.periodRange[0]}
-                  step="0.1"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-gray-300 font-semibold mb-1">Depth Threshold (%)</label>
-              <input 
-                type="range"
-                min="0.1"
-                max="5"
-                step="0.1"
-                value={params.depthThreshold * 100}
-                onChange={e => setParams(p => ({...p, depthThreshold: parseFloat(e.target.value) / 100}))}
-                className="w-full"
-                disabled={disabled}
-              />
-              <div className="text-center text-gray-400">{(params.depthThreshold * 100).toFixed(1)}%</div>
-            </div>
-            <div>
-              <label className="block text-gray-300 font-semibold mb-1">SNR Cutoff</label>
-              <input 
-                type="range"
-                min="3"
-                max="20"
-                step="0.5"
-                value={params.snrCutoff}
-                onChange={e => setParams(p => ({...p, snrCutoff: parseFloat(e.target.value)}))}
-                className="w-full"
-                disabled={disabled}
-              />
-              <div className="text-center text-gray-400">{params.snrCutoff.toFixed(1)}</div>
-            </div>
-          </div>
+    return (
+        <div className="bg-space-blue/30 p-4 rounded-lg border border-space-light/50 mt-8">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full text-lg font-display text-accent-gold tracking-wider text-center flex items-center justify-center"
+            >
+                <SlidersIcon className="w-6 h-6 mr-3" />
+                Advanced Analysis Parameters
+            </button>
+            {isOpen && (
+                <div className="animate-fade-in-down mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <label className="block text-gray-400 mb-1">Period Range (days)</label>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="number"
+                                value={params.periodRange[0]}
+                                onChange={(e) => handleRangeChange(0, e.target.value)}
+                                className="w-full bg-space-dark p-2 rounded-md border border-space-light focus:ring-2 focus:ring-accent-magenta outline-none"
+                                disabled={disabled}
+                            />
+                            <span>-</span>
+                            <input
+                                type="number"
+                                value={params.periodRange[1]}
+                                onChange={(e) => handleRangeChange(1, e.target.value)}
+                                className="w-full bg-space-dark p-2 rounded-md border border-space-light focus:ring-2 focus:ring-accent-magenta outline-none"
+                                disabled={disabled}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="snr" className="block text-gray-400 mb-1">Min. Signal-to-Noise (SNR)</label>
+                        <input
+                            id="snr"
+                            type="number"
+                            value={params.snr}
+                            onChange={(e) => onParamsChange({ ...params, snr: parseFloat(e.target.value) || 0 })}
+                            className="w-full bg-space-dark p-2 rounded-md border border-space-light focus:ring-2 focus:ring-accent-magenta outline-none"
+                            disabled={disabled}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="depth" className="block text-gray-400 mb-1">Min. Transit Depth (ppm)</label>
+                        <input
+                            id="depth"
+                            type="number"
+                            value={params.transitDepth}
+                            onChange={(e) => onParamsChange({ ...params, transitDepth: parseFloat(e.target.value) || 0 })}
+                            className="w-full bg-space-dark p-2 rounded-md border border-space-light focus:ring-2 focus:ring-accent-magenta outline-none"
+                            disabled={disabled}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
-export default BlsParametersComponent;
+export default BlsParameters;

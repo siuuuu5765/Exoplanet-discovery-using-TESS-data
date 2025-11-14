@@ -5,27 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "postinstall": "patch-package"
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^0.14.0",
+    "@google/genai": "^1.29.0",
     "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1",
-    "plotly.js-dist-min": "^2.33.0",
-    "pptxgenjs": "^3.12.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-markdown": "^9.0.1",
-    "recharts": "^2.12.7"
+    "jspdf": "^3.0.3",
+    "plotly.js-dist-min": "^3.2.0",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.4.1"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "patch-package": "^8.0.0",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^5.1.0",
     "typescript": "^5.2.2",
-    "vite": "^5.3.3"
+    "vite": "^7.2.2"
   }
 }

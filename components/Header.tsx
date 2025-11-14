@@ -6,7 +6,7 @@ const Header: React.FC = () => (
       TESS Exoplanet Discovery Hub
     </h1>
     <p className="text-md md:text-lg text-gray-300 mt-4 max-w-3xl mx-auto">
-      Enter a TESS Input Catalog (TIC) ID to retrieve mission data and visualize potential new worlds.
+      An advanced tool to analyze TESS mission data, visualize exoplanet candidates, and assess their habitability using AI.
     </p>
   </header>
 );

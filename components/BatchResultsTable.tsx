@@ -11,6 +11,11 @@ const BatchResultsTable: React.FC<BatchResultsTableProps> = ({ results }) => {
         return null;
     }
 
+    const renderValue = (value: string | number) => {
+        if (typeof value === 'number') return value.toFixed(3);
+        return value;
+    }
+
     return (
         <div className="bg-space-blue/30 p-4 rounded-lg border border-space-light/50 mt-8 animate-fade-in">
             <h3 className="text-lg font-display text-accent-gold tracking-wider text-center mb-4">
@@ -22,11 +27,10 @@ const BatchResultsTable: React.FC<BatchResultsTableProps> = ({ results }) => {
                         <tr>
                             <th className="p-2 font-semibold">TIC ID</th>
                             <th className="p-2 font-semibold">Status</th>
-                            <th className="p-2 font-semibold">Period (days)</th>
-                            <th className="p-2 font-semibold">Radius (R⊕)</th>
-                            <th className="p-2 font-semibold">Mass (M⊕)</th>
-                            <th className="p-2 font-semibold">Temp (K)</th>
-                            <th className="p-2 font-semibold">ML Classification</th>
+                            <th className="p-2 font-semibold">Star Name</th>
+                            <th className="p-2 font-semibold">Distance (ly)</th>
+                            <th className="p-2 font-semibold">Planet Period (d)</th>
+                            <th className="p-2 font-semibold">Planet Radius (R⊕)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -40,21 +44,10 @@ const BatchResultsTable: React.FC<BatchResultsTableProps> = ({ results }) => {
                                         {item.status}
                                     </span>
                                 </td>
-                                <td className="p-2 font-mono">
-                                    {item.status === 'success' && item.detection ? item.detection.blsPeriod.value.toFixed(4) : 'N/A'}
-                                </td>
-                                <td className="p-2 font-mono">
-                                    {item.status === 'success' && item.planet ? item.planet.radius.value.toFixed(2) : 'N/A'}
-                                </td>
-                                <td className="p-2 font-mono">
-                                    {item.status === 'success' && item.planet ? item.planet.mass.value.toFixed(2) : 'N/A'}
-                                </td>
-                                <td className="p-2 font-mono">
-                                    {item.status === 'success' && item.planet ? item.planet.temperature.toFixed(0) : 'N/A'}
-                                </td>
-                                <td className="p-2">
-                                    {item.status === 'success' && item.classification ? item.classification.cnn.bestGuess : 'N/A'}
-                                </td>
+                                <td className="p-2">{item.profile ? renderValue(item.profile.Star.Name) : 'N/A'}</td>
+                                <td className="p-2 font-mono">{item.profile ? renderValue(item.profile.Star.Distance_ly) : 'N/A'}</td>
+                                <td className="p-2 font-mono">{item.profile ? renderValue(item.profile.Planet.Orbital_Period_days) : 'N/A'}</td>
+                                <td className="p-2 font-mono">{item.profile ? renderValue(item.profile.Planet.Planet_Radius_Rearth) : 'N/A'}</td>
                             </tr>
                         ))}
                     </tbody>

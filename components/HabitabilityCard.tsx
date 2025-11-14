@@ -1,73 +1,43 @@
 // components/HabitabilityCard.tsx
 import React from 'react';
-import type { PlanetAnalysis, Habitability } from '../types';
+import type { HabitabilityAnalysis } from '../types';
 import { LeafIcon } from './Icons';
-import ChemicalComposition from './ChemicalComposition';
+import ReactMarkdown from 'react-markdown';
 
 interface HabitabilityCardProps {
-  habitability: Habitability;
-  atmosphere: PlanetAnalysis['atmosphere'];
+    analysis: HabitabilityAnalysis;
 }
 
-const HabitabilityCard: React.FC<HabitabilityCardProps> = ({ habitability, atmosphere }) => {
-  const getClassificationStyle = (classification: Habitability['classification']) => {
-    switch (classification) {
-      case 'Potentially Habitable':
-        return {
-          textColor: 'text-green-400',
-          bgColor: 'bg-green-500/20',
-        };
-      case 'Marginal':
-        return {
-          textColor: 'text-yellow-400',
-          bgColor: 'bg-yellow-500/20',
-        };
-      case 'Unlikely Habitable':
-      default:
-        return {
-          textColor: 'text-red-400',
-          bgColor: 'bg-red-500/20',
-        };
+const HabitabilityCard: React.FC<HabitabilityCardProps> = ({ analysis }) => {
+    const getScoreColor = (score: number) => {
+        if (score >= 8) return 'text-green-300';
+        if (score >= 6) return 'text-cyan-300';
+        if (score >= 4) return 'text-yellow-300';
+        if (score >= 2) return 'text-orange-300';
+        return 'text-red-400';
+    };
+
+    if (!analysis) {
+        return null;
     }
-  };
-  
-  const classificationStyle = getClassificationStyle(habitability.classification);
-  
-  return (
-    <div className="bg-space-blue/50 p-4 rounded-lg shadow-md border border-space-light backdrop-blur-sm h-full flex flex-col">
-      <h3 className="text-lg font-bold font-display text-accent-cyan mb-3 text-center flex items-center justify-center">
-        <LeafIcon className="w-6 h-6 mr-2" />
-        Habitability Assessment
-      </h3>
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left side: Score and summary */}
-        <div className="flex flex-col justify-between">
-          <div>
-            <div className="text-center">
-              <p className="text-sm text-gray-400">Classification</p>
-              <p className={`text-2xl font-bold font-display ${classificationStyle.textColor}`}>
-                {habitability.classification}
-              </p>
-              <p className={`text-5xl font-bold font-mono ${classificationStyle.textColor} mt-2`}>
-                {habitability.score.toFixed(1)}
-                <span className="text-2xl text-gray-400">/10</span>
-              </p>
-              <p className="text-xs text-gray-400">Habitability Score</p>
+
+    return (
+        <div className="bg-space-dark/30 p-4 rounded-md border border-space-light/50 h-full">
+            <h4 className="font-display text-accent-gold text-lg flex items-center mb-3">
+                <LeafIcon className="w-5 h-5 mr-2" />
+                AI Habitability Analysis
+            </h4>
+            <div className="text-center mb-3">
+                <p className="text-sm text-gray-400">Habitability Score</p>
+                <p className={`text-5xl font-bold font-display ${getScoreColor(analysis.score)}`}>
+                    {analysis.score.toFixed(1)}<span className="text-2xl text-gray-400">/10</span>
+                </p>
             </div>
-            
-            <p className="text-xs text-gray-300 mt-3 text-justify">
-              <strong>Reasoning:</strong> {habitability.reasoning}
-            </p>
-          </div>
+            <div className="prose prose-invert prose-sm max-w-none text-gray-300">
+                <ReactMarkdown>{analysis.rationale}</ReactMarkdown>
+            </div>
         </div>
-        
-        {/* Right side: Composition */}
-        <div>
-          <ChemicalComposition composition={atmosphere.composition} />
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default HabitabilityCard;

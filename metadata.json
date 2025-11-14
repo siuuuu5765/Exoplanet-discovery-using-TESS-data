@@ -1,5 +1,5 @@
 {
   "name": "TESS Exoplanet Discovery Hub",
-  "description": "An advanced web application to discover and analyze exoplanets using TESS Input Catalog (TIC) IDs. Features detailed data visualization, an interactive planet viewer, and an AI-powered chatbot to answer all your astronomy questions.",
+  "description": "An advanced tool to analyze TESS mission data, visualize exoplanet candidates, and assess their habitability using AI.",
   "requestFramePermissions": []
 }

@@ -28,7 +28,7 @@ const BatchAnalysis: React.FC<BatchAnalysisProps> = ({ onRunBatch, disabled, pro
             {isOpen && (
                 <div className="animate-fade-in-down">
                     <p className="text-sm text-gray-400 mb-2">
-                        Enter multiple TIC IDs (one per line) for rapid classification.
+                        Enter multiple TIC IDs (space or newline separated) for rapid classification.
                     </p>
                     <textarea
                         value={ticIdsInput}

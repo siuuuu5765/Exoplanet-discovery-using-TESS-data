@@ -1,151 +1,102 @@
 // types.ts
 
-// Basic data point for a light curve
+// The primary, unified data structure for the entire application.
+// This structure is populated by the systemProfileService, which merges
+// data from multiple real astronomical sources.
+export interface VerifiedSystemProfile {
+  TIC_ID: string;
+  Star: {
+    Name: string | 'Not Available';
+    Distance_ly: number | 'Not Available';
+    Apparent_Magnitude: number | 'Not Available';
+    Temperature_K: number | 'Not Available';
+    Radius_Rsun: number | 'Not Available';
+    Mass_Msun: number | 'Not Available';
+    Luminosity_Lsun: number | 'Not Available';
+    Surface_Gravity_logg: number | 'Not Available';
+    Metallicity_FeH: number | 'Not Available';
+    Coordinates: {
+      RA_deg: number | 'Not Available';
+      Dec_deg: number | 'Not Available';
+    }
+  };
+  Planet: {
+    Name: string | 'Not Available';
+    Orbital_Period_days: number | 'Not Available';
+    Planet_Radius_Rearth: number | 'Not Available';
+    Planet_Mass_Mearth: number | 'Not Available';
+    Equilibrium_Temperature_K: number | 'Not Available';
+  };
+  Source: {
+    Distance: string;
+    Other_Stellar_Params: string;
+    Planet_Params: string;
+  };
+}
+
+
+// These types are now used for visualization purposes only,
+// populated by a deterministic mock generator.
 export interface LightCurvePoint {
-  time: number; // in hours
-  brightness: number; // normalized
+  time: number;
+  brightness: number;
 }
 
-// Data point for radial velocity
 export interface RadialVelocityPoint {
-  time: number; // in days
-  velocity: number; // in m/s
+  time: number;
+  velocity: number;
 }
 
-// A single chemical element in an atmosphere
-export interface Chemical {
-  chemical: string;
-  percentage: number;
-}
-
-// Parameters for Box-fitting Least Squares algorithm
-export interface BlsParameters {
-    periodRange: [number, number];
-    depthThreshold: number;
-    snrCutoff: number;
-}
-
-// Data point for BLS power spectrum
-export interface BlsResultPoint {
-    period: number;
-    power: number;
-}
-
-// Data point for phase-folded light curve
 export interface PhaseFoldedPoint {
-    phase: number;
-    brightness: number;
+  phase: number;
+  brightness: number;
 }
 
-// Parameters from the transit model fit
-export interface TransitFitParams {
-    depth: number;
-    duration: number;
-    impactParameter: number;
-    epoch: number;
+export interface BlsResultPoint {
+  period: number;
+  power: number;
 }
 
-// For ML Classifier: individual prediction
-export interface ClassificationPrediction {
-    class: string;
-    confidence: number;
-}
-
-// For ML Classifier: feature importance
-export interface FeatureImportance {
-    feature: string;
-    score: number;
-}
-
-// For ML Classifier: output of one model
-export interface ClassifierOutput {
-    bestGuess: string;
-    predictions: ClassificationPrediction[];
-    featureImportance?: FeatureImportance[];
-    explanation?: string;
-}
-
-// For data source comparison
 export interface ComparisonData {
-    property: string;
-    value: string;
-    source: 'Gemini' | 'Archive';
+    parameter: string;
+    candidate: string | number;
+    earth: string | number;
+    jupiter: string | number;
 }
 
-// Represents a value with uncertainty
-export interface Measurement {
-    value: number;
-    uncertainty: number;
+export interface HabitabilityAnalysis {
+    score: number; // A score from 0 to 10
+    rationale: string;
 }
 
-export interface Habitability {
-    score: number; // out of 10
-    classification: 'Potentially Habitable' | 'Marginal' | 'Unlikely Habitable' | 'Unknown';
-    reasoning: string;
-    inHabitableZone: boolean;
+export interface AtmosphericComposition {
+    gases: { gas: string; percentage: number }[];
+    rationale: string;
 }
 
-// The main analysis object
-export interface PlanetAnalysis {
-  ticId: string;
-  lightCurve?: LightCurvePoint[];
-  radialVelocityCurve?: RadialVelocityPoint[];
-  detection: {
-    blsPeriod: Measurement;
-    blsPowerSpectrum?: BlsResultPoint[];
-    phaseFoldedLightCurve?: PhaseFoldedPoint[];
-    transitFitModel?: PhaseFoldedPoint[];
-    transitFitParameters: TransitFitParams;
-  };
-  star: {
-    name: string;
-    type: string;
-    apparentMagnitude: number;
-    distance: number;
-  };
-  planet: {
-    name: string;
-    period: Measurement;
-    radius: Measurement;
-    mass: Measurement;
-    temperature: number; // in Kelvin
-  };
-  atmosphere?: {
-    composition: Chemical[];
-    description: string;
-  };
-  habitability?: Habitability;
-  classification: {
-      cnn: ClassifierOutput;
-      randomForest: ClassifierOutput;
-  };
-  research?: {
-      abstract: string;
-      summary: string;
-  };
-  comparisonData?: ComparisonData[];
+// Wrapper type for the full analysis result passed to components
+export interface FullAnalysis {
+  profile: VerifiedSystemProfile;
+  lightCurve: LightCurvePoint[];
+  radialVelocityCurve: RadialVelocityPoint[];
+  blsPowerSpectrum: BlsResultPoint[];
+  phaseFoldedLightCurve: PhaseFoldedPoint[];
+  transitFitModel: PhaseFoldedPoint[];
+  blsPeriod: number;
+  transitDepth: number;
+  transitDuration: number;
+  transitEpoch: number;
+  // AI Generated Content
+  aiAnalysis: string;
+  researchSummary: string;
+  comparisonData: ComparisonData[];
+  habitabilityAnalysis: HabitabilityAnalysis;
+  atmosphericComposition: AtmosphericComposition;
 }
 
-// For chat messages
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model' | 'system';
-  content: string;
-}
-
-// For batch analysis results
+// Type for batch analysis results
 export interface BatchResult {
     ticId: string;
-    status: 'success' | 'error';
-    classification?: PlanetAnalysis['classification'];
-    detection?: PlanetAnalysis['detection'];
-    planet?: PlanetAnalysis['planet'];
-}
-
-// For injection-recovery tests
-export interface InjectionResult {
-    injectedPeriod: number;
-    injectedDepth: number;
-    recovered: boolean;
-    recoveredPeriod?: number;
+    status: 'success' | 'failure';
+    profile?: VerifiedSystemProfile;
 }

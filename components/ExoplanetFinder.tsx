@@ -1,332 +1,244 @@
 // components/ExoplanetFinder.tsx
-import React, { useState, useEffect } from 'react';
-import { fetchAndAnalyzeTicData, analyzeTicIdForBatch, phaseFoldLightCurve } from '../services/geminiService';
-import { generateMockAnalysis } from '../services/mockData';
-import { exportAnalysisToJSON, exportAnalysisToCSV } from '../services/exportService';
-import { generatePdfReport } from '../services/pdfGenerator';
-import { generatePresentation } from '../services/presentationPackService';
-import { generateResearchReport } from '../services/reportGenerator';
-import type { PlanetAnalysis, BlsParameters, BatchResult, PhaseFoldedPoint } from '../types';
-import LightCurveChart from './LightCurveChart';
-import PlanetVisualizer from './PlanetVisualizer';
+import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import type { FullAnalysis, BatchResult } from '../types';
+import { getSystemProfile } from '../services/systemProfileService';
+import { generateMockVisuals } from '../services/mockData';
+import { generateAiAnalysis, generateResearchSummary, getChatbotResponse, generateHabitabilityAnalysis, generateAtmosphericComposition } from '../services/geminiService';
+
+// Import all necessary components
+import FeaturedSystems from './FeaturedSystems';
 import PlanetProfileCard from './PlanetProfileCard';
-import HabitabilityCard from './HabitabilityCard';
-import RadialVelocityChart from './RadialVelocityChart';
-import MachineLearningClassifier from './MachineLearningClassifier';
-import BlsPowerSpectrumChart from './BlsPowerSpectrumChart';
+import PlanetVisualizer from './PlanetVisualizer';
+import LightCurveChart from './LightCurveChart';
 import PhaseFoldedLightCurveChart from './PhaseFoldedLightCurveChart';
-import TransitFitParameters from './TransitFitParameters';
-import ResearchSummary from './ResearchSummary';
-import ComparisonTable from './ComparisonTable';
-import DetrendingInfoCard from './DetrendingInfoCard';
-import BlsParametersComponent from './BlsParameters';
-import PlanetSelector from './PlanetSelector';
-import InjectionRecovery from './InjectionRecovery';
-import BayesianOptimization from './BayesianOptimization';
-import MlPerformanceMetrics from './MlPerformanceMetrics';
-import Chatbot from './Chatbot';
-import TransitDetailChart from './TransitDetailChart'; // Import the new component
+import RadialVelocityChart from './RadialVelocityChart';
 import BatchAnalysis from './BatchAnalysis';
 import BatchResultsTable from './BatchResultsTable';
-import ResearchReportModal from './ResearchReportModal';
+import BlsParameters from './BlsParameters';
+import BlsPowerSpectrumChart from './BlsPowerSpectrumChart';
+import HabitabilityCard from './HabitabilityCard';
+import AtmosphericCompositionCard from './ChemicalComposition';
+import ComparisonTable from './ComparisonTable';
+import ResearchSummary from './ResearchSummary';
+import Chatbot from './Chatbot';
 
-// This component is now self-reliant for API calls and doesn't need to signal parent components.
+
+const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+    <button
+        onClick={onClick}
+        className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors focus:outline-none ${
+            active
+                ? 'bg-space-blue/50 border-b-2 border-accent-cyan text-accent-cyan'
+                : 'text-gray-400 hover:text-white hover:bg-space-light/30'
+        }`}
+    >
+        {children}
+    </button>
+);
+
+
 const ExoplanetFinder: React.FC = () => {
     const [ticId, setTicId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [analysisResult, setAnalysisResult] = useState<PlanetAnalysis | null>(null);
-    const [blsParams, setBlsParams] = useState<BlsParameters>({
-        periodRange: [1, 20],
-        depthThreshold: 0.001,
-        snrCutoff: 7.0,
-    });
-    const [isBatchRunning, setIsBatchRunning] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<FullAnalysis | null>(null);
+    const [activeTab, setActiveTab] = useState('overview');
     const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
     const [batchProgress, setBatchProgress] = useState('');
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-    const [reportMarkdown, setReportMarkdown] = useState('');
-    
-    const [interactivePeriod, setInteractivePeriod] = useState<number | null>(null);
-    const [phaseFoldedData, setPhaseFoldedData] = useState<PhaseFoldedPoint[] | null>(null);
+    const [blsParams, setBlsParams] = useState({
+        periodRange: [0.5, 30],
+        snr: 5,
+        transitDepth: 100,
+    });
 
-
-    const handleApiError = (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-
-        // Provide more user-friendly messages for common API errors.
-        if (errorMessage.includes("API key") || errorMessage.includes("Requested entity was not found") || errorMessage.includes("invalid authentication credentials")) {
-            setError("Authentication Failed: The provided API key is invalid, missing, or not enabled for this project. Please verify your Vercel environment variable.");
-        } else if (errorMessage.includes("Content has been blocked")) {
-            setError("Analysis Blocked: The AI's safety settings blocked the request or response. This can sometimes occur with complex data. Please try a different target.");
-        } else if (errorMessage.includes("quota")) {
-            setError("Quota Exceeded: You have exceeded your usage limits for the Gemini API. Please check your Google Cloud account for details.");
-        } else if (errorMessage.includes("location is not supported")) {
-            setError("Service Unavailable: The Gemini API is not available in your current location.");
-        } else if (errorMessage.includes("unexpected format")) {
-             // Handle our custom parsing error
-             setError("Data Parsing Error: The AI model returned data in an unexpected format. This may be a temporary issue. Please try again.");
-        }
-        else {
-            // For any other errors, display the raw message for debugging.
-            setError(`An unexpected error occurred: ${errorMessage}`);
-        }
-    };
-
-    const handleFetchData = async (idToFetch: string) => {
-        if (!idToFetch) return;
+    const handleAnalyze = async (idToAnalyze: string) => {
+        if (!idToAnalyze) return;
         
         setIsLoading(true);
         setError(null);
         setAnalysisResult(null);
         setBatchResults([]);
-
+        
         try {
-            let result: PlanetAnalysis;
-            if (idToFetch.toLowerCase() === 'mock') {
-                result = generateMockAnalysis();
-            } else {
-                result = await fetchAndAnalyzeTicData(idToFetch, blsParams);
+            setLoadingMessage('Retrieving Data from Astronomical Archives...');
+            const profile = await getSystemProfile(idToAnalyze);
+            
+            if (profile.Star.Name === 'INVALID TIC ID') {
+              setError(`The specified ID (${idToAnalyze}) was not found in astronomical catalogs.`);
+              setIsLoading(false);
+              return;
             }
-            setAnalysisResult(result);
-        } catch (err) {
-            handleApiError(err);
+            
+            setLoadingMessage('Generating Visualizations...');
+            const visuals = generateMockVisuals(profile);
+
+            setLoadingMessage('Running Foundational AI Analysis...');
+            const { aiAnalysis, comparisonData } = await generateAiAnalysis(profile, blsParams);
+
+            setLoadingMessage('Proposing Follow-up Research...');
+            const researchSummary = await generateResearchSummary(profile);
+
+            setLoadingMessage('Assessing Habitability...');
+            const habitabilityAnalysis = await generateHabitabilityAnalysis(profile);
+
+            setLoadingMessage('Predicting Atmospheric Composition...');
+            const atmosphericComposition = await generateAtmosphericComposition(profile);
+            
+            const finalResult: FullAnalysis = {
+                profile,
+                ...visuals,
+                aiAnalysis,
+                researchSummary,
+                comparisonData,
+                habitabilityAnalysis,
+                atmosphericComposition,
+            };
+            setAnalysisResult(finalResult);
+            setActiveTab('overview');
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during analysis.';
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
+            setLoadingMessage('');
         }
     };
-    
-    const handleSelectTarget = (selectedTicId: string) => {
-        setTicId(selectedTicId);
-        handleFetchData(selectedTicId);
-    };
-
-    // When a new analysis result comes in, initialize the interactive period
-    useEffect(() => {
-        if (analysisResult) {
-            setInteractivePeriod(analysisResult.detection.blsPeriod.value);
-        } else {
-            setInteractivePeriod(null);
-        }
-    }, [analysisResult]);
-
-    // When the interactive period changes, re-calculate the phase-folded data
-    useEffect(() => {
-        if (analysisResult?.lightCurve && interactivePeriod !== null && interactivePeriod > 0) {
-            const folded = phaseFoldLightCurve(
-                analysisResult.lightCurve,
-                interactivePeriod,
-                analysisResult.detection.transitFitParameters.epoch
-            );
-            setPhaseFoldedData(folded);
-        } else {
-            setPhaseFoldedData(analysisResult?.detection.phaseFoldedLightCurve || null);
-        }
-    }, [analysisResult, interactivePeriod]);
-
 
     const handleRunBatch = async (ticIdsInput: string) => {
-        const ticIds = ticIdsInput.trim().split(/\s+/).filter(id => id);
-        if (ticIds.length === 0) return;
+        const ids = ticIdsInput.split(/[\s,]+/).filter(id => id.trim() !== '');
+        if (ids.length === 0) return;
 
-        setIsBatchRunning(true);
-        setBatchResults([]);
-        setBatchProgress('');
+        setIsLoading(true);
         setError(null);
         setAnalysisResult(null);
+        setBatchResults([]);
+        let currentResults: BatchResult[] = [];
 
-        const results: BatchResult[] = [];
-
-        for (let i = 0; i < ticIds.length; i++) {
-            const currentTicId = ticIds[i];
-            setBatchProgress(`Analyzing ${i + 1} of ${ticIds.length}: ${currentTicId}`);
+        for (let i = 0; i < ids.length; i++) {
+            const id = ids[i];
+            setBatchProgress(`(${i + 1}/${ids.length})`);
             try {
-                if (currentTicId.toLowerCase() === 'mock') {
-                    // Create a mock batch result
-                    const mockAnalysis = generateMockAnalysis(currentTicId);
-                    results.push({
-                        ticId: currentTicId,
-                        status: 'success',
-                        detection: mockAnalysis.detection,
-                        classification: mockAnalysis.classification,
-                        planet: mockAnalysis.planet,
-                    });
-                } else {
-                    const result = await analyzeTicIdForBatch(currentTicId, blsParams);
-                    results.push({
-                        ticId: currentTicId,
-                        status: 'success',
-                        detection: result.detection,
-                        classification: result.classification,
-                        planet: result.planet,
-                    });
-                }
-            } catch (err) {
-                console.error(`Error processing TIC ID ${currentTicId} in batch:`, err);
-                results.push({ ticId: currentTicId, status: 'error' });
-                handleApiError(err);
-                // Stop the batch if there's an API key error
-                if (err instanceof Error && err.message.includes("Requested entity was not found")) {
-                    break;
-                }
-            } finally {
-                setBatchResults([...results]);
+                const profile = await getSystemProfile(id);
+                if (profile.Star.Name === 'INVALID TIC ID') throw new Error("Invalid TIC ID");
+                
+                currentResults.push({
+                    ticId: id,
+                    status: 'success',
+                    profile: profile
+                });
+            } catch (error) {
+                currentResults.push({ ticId: id, status: 'failure' });
             }
+            setBatchResults([...currentResults]);
         }
-
-        setBatchProgress('Batch complete!');
-        setIsBatchRunning(false);
+        setBatchProgress('');
+        setIsLoading(false);
     };
 
-    const handleGenerateReport = () => {
-        if (!analysisResult) return;
-        const markdown = generateResearchReport(analysisResult);
-        setReportMarkdown(markdown);
-        setIsReportModalOpen(true);
+    const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') handleAnalyze(ticId);
+    };
+
+    const handleSelectTarget = (selectedTicId: string) => {
+        setTicId(selectedTicId);
+        handleAnalyze(selectedTicId);
     };
 
     return (
         <div className="container mx-auto">
+            {/* Input Section */}
             <div className="max-w-xl mx-auto bg-space-blue/50 p-4 rounded-lg shadow-lg border border-space-light backdrop-blur-sm">
                 <div className="flex">
                     <input
                         type="text"
                         value={ticId}
                         onChange={(e) => setTicId(e.target.value)}
-                        placeholder="Enter TESS Input Catalog (TIC) ID..."
+                        onKeyPress={handleKeyPress}
+                        placeholder="Enter a TESS Input Catalog (TIC) ID"
                         className="flex-1 bg-space-dark p-3 rounded-l-md border-0 focus:ring-2 focus:ring-accent-magenta outline-none"
-                        disabled={isLoading || isBatchRunning}
+                        disabled={isLoading}
                     />
                     <button
-                        onClick={() => handleFetchData(ticId)}
-                        disabled={isLoading || isBatchRunning}
+                        onClick={() => handleAnalyze(ticId)}
+                        disabled={isLoading || !ticId.trim()}
                         className="bg-accent-magenta text-white font-bold py-3 px-6 rounded-r-md hover:bg-accent-magenta/80 transition-colors disabled:opacity-50"
                     >
-                        {isLoading ? 'Analyzing...' : isBatchRunning ? 'Batch Running...' : 'Analyze'}
+                        {isLoading ? 'Analyzing...' : 'Analyze'}
                     </button>
                 </div>
-                <BlsParametersComponent params={blsParams} setParams={setBlsParams} disabled={isLoading || isBatchRunning} />
-                <PlanetSelector onSelect={handleSelectTarget} disabled={isLoading || isBatchRunning} />
             </div>
 
-            <BatchAnalysis 
-                onRunBatch={handleRunBatch}
-                disabled={isLoading || isBatchRunning}
-                progress={batchProgress}
-            />
+            {error && <div className="text-center text-red-400 mt-4 animate-fade-in max-w-xl mx-auto bg-red-900/50 p-3 rounded-lg border border-red-400"><strong>Error:</strong> {error}</div>}
+            
+            <BlsParameters params={blsParams} onParamsChange={setBlsParams} disabled={isLoading} />
+            <BatchAnalysis onRunBatch={handleRunBatch} disabled={isLoading} progress={batchProgress} />
             <BatchResultsTable results={batchResults} />
 
-
-            {error && <p className="text-center text-red-400 mt-4 animate-fade-in">{error}</p>}
-            
-            {isLoading && (
-                <div className="text-center mt-8">
-                    <div className="loader"></div>
-                    <p className="text-lg text-accent-cyan mt-4 animate-pulse">Analyzing starlight... this may take a moment.</p>
+            {isLoading && !batchResults.length && (
+                <div className="text-center mt-8 animate-fade-in">
+                    <div className="loader mx-auto"></div>
+                    <p className="text-lg text-accent-cyan mt-4 animate-pulse">{loadingMessage || 'Analyzing...'}</p>
+                    <p className="text-sm text-gray-400 mt-2">This may take a few moments.</p>
                 </div>
             )}
-            
+
+            {!isLoading && !analysisResult && batchResults.length === 0 && (
+                <FeaturedSystems onSelect={handleSelectTarget} disabled={isLoading} />
+            )}
+
             {analysisResult && (
                 <div id="analysis-report" className="mt-8 space-y-8 animate-fade-in">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <PlanetProfileCard profile={analysisResult.profile} />
+                        <PlanetVisualizer profile={analysisResult.profile} />
+                    </div>
                     
-                    {/* Top Section: Profile & Visualization */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <PlanetProfileCard planet={analysisResult.planet} star={analysisResult.star} />
-                        <PlanetVisualizer planet={analysisResult.planet} star={analysisResult.star} />
+                    <div className="border-b border-space-light/50 flex space-x-2">
+                        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>Data Visualization</TabButton>
+                        <TabButton active={activeTab === 'ai_insights'} onClick={() => setActiveTab('ai_insights')}>AI Insights</TabButton>
+                        <TabButton active={activeTab === 'research'} onClick={() => setActiveTab('research')}>Research</TabButton>
+                        <TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>Chat</TabButton>
                     </div>
 
-                    {/* Signal Analysis Section */}
-                     <div className="p-4 rounded-lg bg-space-blue/30 border border-space-light/50">
-                        <h2 className="text-2xl font-display text-accent-gold tracking-wider text-center mb-4">Signal Detection & Analysis</h2>
-                         <div className="space-y-8">
-                            {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
-                                <LightCurveChart 
-                                    data={analysisResult.lightCurve} 
-                                    period={analysisResult.detection.blsPeriod.value}
-                                    epoch={analysisResult.detection.transitFitParameters.epoch}
-                                    duration={analysisResult.detection.transitFitParameters.duration}
-                                />
-                            )}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {analysisResult.detection.blsPowerSpectrum && (
-                                     <BlsPowerSpectrumChart data={analysisResult.detection.blsPowerSpectrum} bestPeriod={analysisResult.detection.blsPeriod.value} />
-                                )}
-                               {phaseFoldedData && analysisResult.detection.transitFitModel && (
-                                    <PhaseFoldedLightCurveChart data={phaseFoldedData} modelData={analysisResult.detection.transitFitModel} />
-                               )}
-                            </div>
-                             {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && analysisResult.detection.transitFitModel && (
-                                <TransitDetailChart
-                                    lightCurve={analysisResult.lightCurve}
-                                    period={analysisResult.detection.blsPeriod.value}
-                                    epoch={analysisResult.detection.transitFitParameters.epoch}
-                                    duration={analysisResult.detection.transitFitParameters.duration}
-                                    modelData={analysisResult.detection.transitFitModel}
-                                />
-                             )}
-                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {interactivePeriod !== null &&
-                                    <TransitFitParameters 
-                                        params={{...analysisResult.detection.transitFitParameters, period: interactivePeriod}}
-                                        onPeriodChange={setInteractivePeriod}
-                                    />
-                                }
-                                <DetrendingInfoCard />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Habitability & Classification */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                       {analysisResult.habitability && analysisResult.atmosphere && (
-                            <HabitabilityCard habitability={analysisResult.habitability} atmosphere={analysisResult.atmosphere} />
-                       )}
-                       <MachineLearningClassifier result={analysisResult.classification} />
-                    </div>
-
-                     {/* Advanced Validation Section */}
-                     <div className="p-4 rounded-lg bg-space-blue/30 border border-space-light/50">
-                        <h2 className="text-2xl font-display text-accent-gold tracking-wider text-center mb-4">Advanced Validation & Modeling</h2>
-                         <div className="space-y-8">
-                            {analysisResult.radialVelocityCurve && analysisResult.radialVelocityCurve.length > 0 && (
+                    <div className="bg-space-blue/30 p-4 rounded-b-lg border border-t-0 border-space-light/50">
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <LightCurveChart data={analysisResult.lightCurve} period={analysisResult.blsPeriod} epoch={analysisResult.transitEpoch} duration={analysisResult.transitDuration} />
+                                <PhaseFoldedLightCurveChart data={analysisResult.phaseFoldedLightCurve} modelData={analysisResult.transitFitModel} />
+                                <BlsPowerSpectrumChart data={analysisResult.blsPowerSpectrum} detectedPeriod={analysisResult.blsPeriod} />
                                 <RadialVelocityChart data={analysisResult.radialVelocityCurve} />
-                            )}
-                            {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
-                                <InjectionRecovery lightCurve={analysisResult.lightCurve} originalPeriod={analysisResult.detection.blsPeriod.value} originalDepth={analysisResult.detection.transitFitParameters.depth} />
-                            )}
-                            <MlPerformanceMetrics />
-                            {analysisResult.lightCurve && analysisResult.lightCurve.length > 0 && (
-                                <BayesianOptimization analysis={analysisResult} />
-                            )}
-                        </div>
+                            </div>
+                        )}
+                         {activeTab === 'ai_insights' && (
+                            <div className="animate-fade-in space-y-8">
+                                {/* Top section: Main Analysis + Habitability */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="md:col-span-2 prose prose-invert max-w-none bg-space-dark/30 p-4 rounded-md">
+                                        <ReactMarkdown>{analysisResult.aiAnalysis}</ReactMarkdown>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <HabitabilityCard analysis={analysisResult.habitabilityAnalysis} />
+                                    </div>
+                                </div>
+                                
+                                {/* A new grid for the two new sections, side-by-side */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <ComparisonTable data={analysisResult.comparisonData} />
+                                    <AtmosphericCompositionCard composition={analysisResult.atmosphericComposition} />
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'research' && (
+                             <ResearchSummary summary={analysisResult.researchSummary} />
+                        )}
+                         {activeTab === 'chat' && (
+                            <Chatbot profile={analysisResult.profile} />
+                        )}
                     </div>
-
-                    {/* Research & Comparison */}
-                    {analysisResult.research && (
-                        <ResearchSummary summary={analysisResult.research.summary} abstract={analysisResult.research.abstract} />
-                    )}
-                    {analysisResult.comparisonData && analysisResult.comparisonData.length > 0 && (
-                        <ComparisonTable data={analysisResult.comparisonData} />
-                    )}
-
-                    {/* Export Buttons */}
-                    <div className="text-center pt-4 space-x-2 flex flex-wrap justify-center gap-2">
-                         <button onClick={() => exportAnalysisToJSON(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Export to JSON</button>
-                         <button onClick={() => exportAnalysisToCSV(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Export to CSV</button>
-                         <button onClick={() => generatePdfReport(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Generate PDF Report</button>
-                         <button onClick={() => generatePresentation(analysisResult)} className="bg-accent-cyan text-space-dark font-semibold py-2 px-4 rounded-md">Generate Presentation</button>
-                         <button onClick={handleGenerateReport} className="bg-accent-gold text-space-dark font-semibold py-2 px-4 rounded-md">Generate Research Report</button>
-                    </div>
-
-                    <Chatbot />
                 </div>
-            )}
-            
-            {isReportModalOpen && (
-                <ResearchReportModal 
-                    reportMarkdown={reportMarkdown}
-                    onClose={() => setIsReportModalOpen(false)}
-                />
             )}
         </div>
     );
