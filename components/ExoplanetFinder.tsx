@@ -1,10 +1,11 @@
 // components/ExoplanetFinder.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { FullAnalysis, BatchResult } from '../types';
 import { getSystemProfile } from '../services/systemProfileService';
 import { generateMockVisuals } from '../services/mockData';
 import { generateAiAnalysis, generateResearchSummary, getChatbotResponse, generateHabitabilityAnalysis, generateAtmosphericComposition } from '../services/geminiService';
+import { generatePdfReport } from '../services/reportGenerator';
 
 // Import all necessary components
 import FeaturedSystems from './FeaturedSystems';
@@ -21,7 +22,20 @@ import AtmosphericCompositionCard from './ChemicalComposition';
 import ComparisonTable from './ComparisonTable';
 import ResearchSummary from './ResearchSummary';
 import Chatbot from './Chatbot';
+import { DownloadIcon } from './Icons';
 
+// Add type declarations for the aistudio window object
+// FIX: Define a named interface for aistudio and use it in the global declaration to avoid type conflicts.
+// FIX: Moved the AIStudio interface inside the `declare global` block to correctly augment the global Window type from within a module file.
+declare global {
+    interface AIStudio {
+        hasSelectedApiKey: () => Promise<boolean>;
+        openSelectKey: () => Promise<void>;
+    }
+    interface Window {
+        aistudio?: AIStudio;
+    }
+}
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
@@ -46,6 +60,8 @@ const ExoplanetFinder: React.FC = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
     const [batchProgress, setBatchProgress] = useState('');
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [apiKeyReady, setApiKeyReady] = useState(false);
     const [blsParams, setBlsParams] = useState<{
         periodRange: [number, number];
         snr: number;
@@ -56,9 +72,39 @@ const ExoplanetFinder: React.FC = () => {
         transitDepth: 100,
     });
 
+    useEffect(() => {
+        const checkApiKey = async () => {
+            if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+                const hasKey = await window.aistudio.hasSelectedApiKey();
+                setApiKeyReady(hasKey);
+            }
+        };
+        checkApiKey();
+    }, []);
+
+    const handleSelectApiKey = async () => {
+        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+            try {
+                await window.aistudio.openSelectKey();
+                // Assume success to avoid race conditions and re-enable UI
+                setApiKeyReady(true);
+                setError(null); // Clear previous errors
+            } catch (error) {
+                console.error("Error opening API key selection:", error);
+                setError("Could not open the API key selection dialog.");
+            }
+        }
+    };
+
+
     const handleAnalyze = async (idToAnalyze: string) => {
         if (!idToAnalyze) return;
         
+        if (!apiKeyReady) {
+            setError("Please select a Gemini API Key before running an analysis.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         setAnalysisResult(null);
@@ -103,7 +149,12 @@ const ExoplanetFinder: React.FC = () => {
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during analysis.';
-            setError(errorMessage);
+            if (errorMessage.toLowerCase().includes('api key') || errorMessage.toLowerCase().includes('permission denied')) {
+                setError('There was an issue with your API Key. Please select a valid key and try again.');
+                setApiKeyReady(false);
+            } else {
+                setError(errorMessage);
+            }
         } finally {
             setIsLoading(false);
             setLoadingMessage('');
@@ -149,9 +200,37 @@ const ExoplanetFinder: React.FC = () => {
         setTicId(selectedTicId);
         handleAnalyze(selectedTicId);
     };
+    
+    const handleDownloadReport = async () => {
+        if (!analysisResult) return;
+        setIsDownloading(true);
+        try {
+            // Give the UI a moment to update button text before blocking the thread
+            await new Promise(resolve => setTimeout(resolve, 50)); 
+            await generatePdfReport(analysisResult.profile.TIC_ID);
+        } catch (error) {
+            console.error("Failed to download report", error);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
 
     return (
         <div className="container mx-auto">
+             {!apiKeyReady && (
+                <div className="max-w-xl mx-auto my-4 bg-yellow-900/50 p-4 rounded-lg shadow-lg border border-yellow-400 text-center animate-fade-in">
+                    <h3 className="text-lg font-bold text-accent-gold">API Key Required</h3>
+                    <p className="text-yellow-200 my-2">To use the AI-powered features of this application, you need to select a Gemini API key.</p>
+                     <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-accent-cyan hover:underline mb-3 block">Learn about billing</a>
+                    <button
+                        onClick={handleSelectApiKey}
+                        className="bg-accent-gold text-space-dark font-bold py-2 px-6 rounded-md hover:bg-accent-gold/80 transition-colors"
+                    >
+                        Select API Key
+                    </button>
+                </div>
+            )}
+
             {/* Input Section */}
             <div className="max-w-xl mx-auto bg-space-blue/50 p-4 rounded-lg shadow-lg border border-space-light backdrop-blur-sm">
                 <div className="flex">
@@ -162,11 +241,11 @@ const ExoplanetFinder: React.FC = () => {
                         onKeyPress={handleKeyPress}
                         placeholder="Enter a TESS Input Catalog (TIC) ID"
                         className="flex-1 bg-space-dark p-3 rounded-l-md border-0 focus:ring-2 focus:ring-accent-magenta outline-none"
-                        disabled={isLoading}
+                        disabled={isLoading || !apiKeyReady}
                     />
                     <button
                         onClick={() => handleAnalyze(ticId)}
-                        disabled={isLoading || !ticId.trim()}
+                        disabled={isLoading || !ticId.trim() || !apiKeyReady}
                         className="bg-accent-magenta text-white font-bold py-3 px-6 rounded-r-md hover:bg-accent-magenta/80 transition-colors disabled:opacity-50"
                     >
                         {isLoading ? 'Analyzing...' : 'Analyze'}
@@ -176,7 +255,7 @@ const ExoplanetFinder: React.FC = () => {
 
             {error && <div className="text-center text-red-400 mt-4 animate-fade-in max-w-xl mx-auto bg-red-900/50 p-3 rounded-lg border border-red-400"><strong>Error:</strong> {error}</div>}
             
-            <BlsParameters params={blsParams} onParamsChange={setBlsParams} disabled={isLoading} />
+            <BlsParameters params={blsParams} onParamsChange={setBlsParams} disabled={isLoading || !apiKeyReady} />
             <BatchAnalysis onRunBatch={handleRunBatch} disabled={isLoading} progress={batchProgress} />
             <BatchResultsTable results={batchResults} />
 
@@ -189,24 +268,34 @@ const ExoplanetFinder: React.FC = () => {
             )}
 
             {!isLoading && !analysisResult && batchResults.length === 0 && (
-                <FeaturedSystems onSelect={handleSelectTarget} disabled={isLoading} />
+                <FeaturedSystems onSelect={handleSelectTarget} disabled={isLoading || !apiKeyReady} />
             )}
 
             {analysisResult && (
                 <div id="analysis-report" className="mt-8 space-y-8 animate-fade-in">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div id="profile-section" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <PlanetProfileCard profile={analysisResult.profile} />
                         <PlanetVisualizer profile={analysisResult.profile} />
                     </div>
                     
-                    <div className="border-b border-space-light/50 flex space-x-2">
-                        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>Data Visualization</TabButton>
-                        <TabButton active={activeTab === 'ai_insights'} onClick={() => setActiveTab('ai_insights')}>AI Insights</TabButton>
-                        <TabButton active={activeTab === 'research'} onClick={() => setActiveTab('research')}>Research</TabButton>
-                        <TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>Chat</TabButton>
+                    <div className="flex justify-between items-end border-b border-space-light/50">
+                        <div className="flex space-x-2">
+                            <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>Data Visualization</TabButton>
+                            <TabButton active={activeTab === 'ai_insights'} onClick={() => setActiveTab('ai_insights')}>AI Insights</TabButton>
+                            <TabButton active={activeTab === 'research'} onClick={() => setActiveTab('research')}>Research</TabButton>
+                            <TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>Chat</TabButton>
+                        </div>
+                        <button
+                            onClick={handleDownloadReport}
+                            disabled={isDownloading}
+                            className="flex items-center px-4 py-2 mb-[-2px] text-sm font-semibold rounded-t-lg transition-colors focus:outline-none bg-accent-gold/80 text-space-dark hover:bg-accent-gold disabled:opacity-50"
+                        >
+                            <DownloadIcon className="w-4 h-4 mr-2" />
+                            {isDownloading ? 'Downloading...' : 'Download Report'}
+                        </button>
                     </div>
 
-                    <div className="bg-space-blue/30 p-4 rounded-b-lg border border-t-0 border-space-light/50">
+                    <div id="tab-content-section" className="bg-space-blue/30 p-4 rounded-b-lg border border-t-0 border-space-light/50">
                         {activeTab === 'overview' && (
                             <div className="space-y-6 animate-fade-in">
                                 <LightCurveChart data={analysisResult.lightCurve} period={analysisResult.blsPeriod} epoch={analysisResult.transitEpoch} duration={analysisResult.transitDuration} />

@@ -2,7 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { VerifiedSystemProfile, ComparisonData, HabitabilityAnalysis, AtmosphericComposition } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Centralized function to create a new AI client instance.
+// This ensures we always use the latest API key from the environment.
+const getAiClient = () => {
+    // The GoogleGenAI constructor will throw an error if API_KEY is missing.
+    // This will be caught by the calling function in ExoplanetFinder.tsx.
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
 
 // A utility function to safely stringify the profile for the prompt
 const stringifyProfile = (profile: VerifiedSystemProfile): string => {
@@ -15,7 +21,7 @@ export const generateAiAnalysis = async (
     profile: VerifiedSystemProfile,
     blsParams: { periodRange: [number, number]; snr: number; transitDepth: number }
 ): Promise<{ aiAnalysis: string; comparisonData: ComparisonData[] }> => {
-
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const profileString = stringifyProfile(profile);
 
@@ -43,55 +49,47 @@ export const generateAiAnalysis = async (
         Example for comparisonData: [{"parameter": "Radius (Earth=1)", "candidate": "1.6", "earth": "1", "jupiter": "11.2"}]
     `;
     
-    try {
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        aiAnalysis: { type: Type.STRING },
-                        comparisonData: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    parameter: { type: Type.STRING },
-                                    candidate: { type: Type.STRING },
-                                    earth: { type: Type.STRING },
-                                    jupiter: { type: Type.STRING },
-                                },
-                                required: ['parameter', 'candidate', 'earth', 'jupiter']
-                            }
+    const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    aiAnalysis: { type: Type.STRING },
+                    comparisonData: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                parameter: { type: Type.STRING },
+                                candidate: { type: Type.STRING },
+                                earth: { type: Type.STRING },
+                                jupiter: { type: Type.STRING },
+                            },
+                            required: ['parameter', 'candidate', 'earth', 'jupiter']
                         }
-                    },
-                    required: ['aiAnalysis', 'comparisonData']
-                }
+                    }
+                },
+                required: ['aiAnalysis', 'comparisonData']
             }
-        });
-        const text = response.text;
-        if (!text) {
-            throw new Error("AI response did not match the expected JSON format.");
         }
-        const parsedJson = JSON.parse(text);
+    });
+    const text = response.text;
+    if (!text) {
+        throw new Error("AI response did not match the expected JSON format.");
+    }
+    const parsedJson = JSON.parse(text);
 
-        // Basic validation
-        if (typeof parsedJson.aiAnalysis === 'string' && Array.isArray(parsedJson.comparisonData)) {
-            return {
-                aiAnalysis: parsedJson.aiAnalysis,
-                comparisonData: parsedJson.comparisonData as ComparisonData[],
-            };
-        } else {
-            throw new Error("AI response did not match the expected JSON format.");
-        }
-    } catch (error) {
-        console.error("Error generating AI analysis:", error);
-        return { 
-            aiAnalysis: "An error occurred while generating the AI analysis. Please check the console for details.",
-            comparisonData: []
+    // Basic validation
+    if (typeof parsedJson.aiAnalysis === 'string' && Array.isArray(parsedJson.comparisonData)) {
+        return {
+            aiAnalysis: parsedJson.aiAnalysis,
+            comparisonData: parsedJson.comparisonData as ComparisonData[],
         };
+    } else {
+        throw new Error("AI response did not match the expected JSON format.");
     }
 };
 
@@ -176,6 +174,7 @@ export const generateHabitabilityAnalysis = async (profile: VerifiedSystemProfil
 
 
 export const generateAtmosphericComposition = async (profile: VerifiedSystemProfile): Promise<AtmosphericComposition> => {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const profileString = stringifyProfile(profile);
 
@@ -193,53 +192,46 @@ export const generateAtmosphericComposition = async (profile: VerifiedSystemProf
         2. "rationale": A brief Markdown string explaining your reasoning based on the provided data (e.g., "Given the planet's high mass and low temperature, it likely retained a dense, hydrogen-dominated atmosphere...").
     `;
 
-    try {
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        gases: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    gas: { type: Type.STRING },
-                                    percentage: { type: Type.NUMBER },
-                                },
-                                required: ['gas', 'percentage']
-                            }
-                        },
-                        rationale: { type: Type.STRING }
+    const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    gases: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                gas: { type: Type.STRING },
+                                percentage: { type: Type.NUMBER },
+                            },
+                            required: ['gas', 'percentage']
+                        }
                     },
-                    required: ['gases', 'rationale']
-                }
+                    rationale: { type: Type.STRING }
+                },
+                required: ['gases', 'rationale']
             }
-        });
-        const text = response.text;
-        if (!text) {
-            throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
         }
-        const parsedJson = JSON.parse(text);
+    });
+    const text = response.text;
+    if (!text) {
+        throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
+    }
+    const parsedJson = JSON.parse(text);
 
-        if (typeof parsedJson.rationale === 'string' && Array.isArray(parsedJson.gases)) {
-            return parsedJson as AtmosphericComposition;
-        } else {
-             throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
-        }
-    } catch (error) {
-        console.error("Error generating atmospheric composition:", error);
-        return {
-            gases: [{ gas: 'Error', percentage: 100 }],
-            rationale: "An error occurred while predicting the atmospheric composition."
-        };
+    if (typeof parsedJson.rationale === 'string' && Array.isArray(parsedJson.gases)) {
+        return parsedJson as AtmosphericComposition;
+    } else {
+         throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
     }
 };
 
 export const generateResearchSummary = async (profile: VerifiedSystemProfile): Promise<string> => {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const profileString = stringifyProfile(profile);
 
@@ -258,35 +250,30 @@ export const generateResearchSummary = async (profile: VerifiedSystemProfile): P
 
         The response must be a single JSON object with one key: "summary" (string).
     `;
-    try {
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        summary: { type: Type.STRING }
-                    },
-                    required: ['summary']
-                }
+    const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    summary: { type: Type.STRING }
+                },
+                required: ['summary']
             }
-        });
-        const text = response.text;
-        if (!text) {
-            console.error("Error generating research summary: AI response text is empty.");
-            return "Failed to generate research summary.";
         }
-        return JSON.parse(text).summary;
-    } catch (error) {
-        console.error("Error generating research summary:", error);
-        return "Failed to generate research summary.";
+    });
+    const text = response.text;
+    if (!text) {
+        throw new Error("Error generating research summary: AI response text is empty.");
     }
+    return JSON.parse(text).summary;
 };
 
 
 export const getChatbotResponse = async (profile: VerifiedSystemProfile, history: any[], question: string): Promise<string> => {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const profileString = stringifyProfile(profile);
     
@@ -302,14 +289,13 @@ export const getChatbotResponse = async (profile: VerifiedSystemProfile, history
         { role: 'user', parts: [{ text: question }] }
     ];
 
-    try {
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: contents as any,
-        });
-        return response.text ?? "I'm sorry, I encountered an error trying to process your question.";
-    } catch (error) {
-        console.error("Chatbot API error:", error);
-        return "I'm sorry, I encountered an error trying to process your question.";
+    const response = await ai.models.generateContent({
+        model: model,
+        contents: contents as any,
+    });
+
+    if (!response.text) {
+        throw new Error("I'm sorry, I encountered an error trying to process your question.");
     }
+    return response.text;
 };
