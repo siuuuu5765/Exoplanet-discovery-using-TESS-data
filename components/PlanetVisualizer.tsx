@@ -1,6 +1,5 @@
 // components/PlanetVisualizer.tsx
 import React, { useEffect, useRef } from 'react';
-// FIX: Use namespace import for Plotly to correctly resolve types like Plotly.Layout.
 import * as Plotly from 'plotly.js-dist-min';
 import type { VerifiedSystemProfile } from '../types';
 

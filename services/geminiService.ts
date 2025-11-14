@@ -271,27 +271,22 @@ export const generateResearchSummary = async (profile: VerifiedSystemProfile): P
     return JSON.parse(text).summary;
 };
 
-
+// FIX: Refactor to use systemInstruction and fix duplicate message bug.
 export const getChatbotResponse = async (profile: VerifiedSystemProfile, history: any[], question: string): Promise<string> => {
     const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const profileString = stringifyProfile(profile);
     
-    const contents = [
-        {
-            role: 'user',
-            parts: [{
-                text: `System instruction: You are an expert astrophysics chatbot specializing in exoplanets. You are answering questions about the system around the star TIC ${profile.TIC_ID}. Use the following verified data as the single source of truth for all specific parameters of this system. You can use your general knowledge of astronomy and physics to explain concepts or provide context, but you must not contradict the provided data. If a user asks for data that is marked as "Not Available", state that the information is not available from the source. Here is the verified data for the system:\n\n${profileString}`
-            }]
-        },
-        { role: 'model', parts: [{ text: `Understood. I am ready to answer questions about TIC ${profile.TIC_ID} using the provided data as my primary context.` }] },
-        ...history,
-        { role: 'user', parts: [{ text: question }] }
-    ];
+    const systemInstruction = `You are an expert astrophysics chatbot specializing in exoplanets. You are answering questions about the system around the star TIC ${profile.TIC_ID}. Use the following verified data as the single source of truth for all specific parameters of this system. You can use your general knowledge of astronomy and physics to explain concepts or provide context, but you must not contradict the provided data. If a user asks for data that is marked as "Not Available", state that the information is not available from the source. Here is the verified data for the system:\n\n${profileString}`;
 
+    // The 'history' array from the component already contains the latest user message.
+    // The 'question' parameter is redundant but we keep the function signature.
     const response = await ai.models.generateContent({
         model: model,
-        contents: contents as any,
+        contents: history as any,
+        config: {
+            systemInstruction: systemInstruction,
+        },
     });
 
     if (!response.text) {
