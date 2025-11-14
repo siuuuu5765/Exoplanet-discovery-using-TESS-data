@@ -43,12 +43,6 @@ export interface LightCurvePoint {
   brightness: number;
 }
 
-// FIX: Add missing RadialVelocityPoint type for the RadialVelocityChart component.
-export interface RadialVelocityPoint {
-  time: number;
-  velocity: number;
-}
-
 export interface PhaseFoldedPoint {
   phase: number;
   brightness: number;
