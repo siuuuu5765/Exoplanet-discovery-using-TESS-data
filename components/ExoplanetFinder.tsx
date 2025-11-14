@@ -12,7 +12,6 @@ import PlanetProfileCard from './PlanetProfileCard';
 import PlanetVisualizer from './PlanetVisualizer';
 import LightCurveChart from './LightCurveChart';
 import PhaseFoldedLightCurveChart from './PhaseFoldedLightCurveChart';
-import RadialVelocityChart from './RadialVelocityChart';
 import BatchAnalysis from './BatchAnalysis';
 import BatchResultsTable from './BatchResultsTable';
 import BlsParameters from './BlsParameters';
@@ -213,7 +212,6 @@ const ExoplanetFinder: React.FC = () => {
                                 <LightCurveChart data={analysisResult.lightCurve} period={analysisResult.blsPeriod} epoch={analysisResult.transitEpoch} duration={analysisResult.transitDuration} />
                                 <PhaseFoldedLightCurveChart data={analysisResult.phaseFoldedLightCurve} modelData={analysisResult.transitFitModel} />
                                 <BlsPowerSpectrumChart data={analysisResult.blsPowerSpectrum} detectedPeriod={analysisResult.blsPeriod} />
-                                <RadialVelocityChart data={analysisResult.radialVelocityCurve} />
                             </div>
                         )}
                          {activeTab === 'ai_insights' && (

@@ -43,6 +43,7 @@ export interface LightCurvePoint {
   brightness: number;
 }
 
+// FIX: Add missing RadialVelocityPoint type for the RadialVelocityChart component.
 export interface RadialVelocityPoint {
   time: number;
   velocity: number;
@@ -86,7 +87,6 @@ export interface AtmosphericComposition {
 export interface FullAnalysis {
   profile: VerifiedSystemProfile;
   lightCurve: LightCurvePoint[];
-  radialVelocityCurve: RadialVelocityPoint[];
   blsPowerSpectrum: BlsResultPoint[];
   phaseFoldedLightCurve: PhaseFoldedPoint[];
   transitFitModel: PhaseFoldedPoint[];

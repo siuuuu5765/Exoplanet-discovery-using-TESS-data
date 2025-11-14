@@ -1,5 +1,5 @@
 // services/mockData.ts
-import type { VerifiedSystemProfile, LightCurvePoint, RadialVelocityPoint, BlsResultPoint, PhaseFoldedPoint } from '../types';
+import type { VerifiedSystemProfile, LightCurvePoint, BlsResultPoint, PhaseFoldedPoint } from '../types';
 
 // Simple seeded pseudo-random number generator (PRNG) for deterministic visuals
 class SeededRandom {
@@ -80,16 +80,8 @@ export const generateMockVisuals = (profile: VerifiedSystemProfile) => {
         transitFitModel.push({ phase, brightness });
     }
     
-    const radialVelocityCurve: RadialVelocityPoint[] = [];
-    const rvAmplitude = rng.nextRange(1, 5); // m/s
-    for (let time = 0; time <= period * 2; time += period / 20) {
-        const velocity = rvAmplitude * Math.sin((time / period) * 2 * Math.PI);
-        radialVelocityCurve.push({time, velocity});
-    }
-
     return {
         lightCurve,
-        radialVelocityCurve,
         blsPowerSpectrum,
         phaseFoldedLightCurve,
         transitFitModel,
