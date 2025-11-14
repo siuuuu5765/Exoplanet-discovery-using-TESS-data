@@ -285,10 +285,10 @@ export const getChatbotResponse = async (profile: VerifiedSystemProfile, history
         {
             role: 'user',
             parts: [{
-                text: `System instruction: You are an expert astrophysics chatbot. Your knowledge is strictly limited to the provided JSON data for TIC ${profile.TIC_ID}. Do not use external knowledge. Answer questions concisely based only on this data. Start of data: \n\n${profileString}`
+                text: `System instruction: You are an expert astrophysics chatbot specializing in exoplanets. You are answering questions about the system around the star TIC ${profile.TIC_ID}. Use the following verified data as the single source of truth for all specific parameters of this system. You can use your general knowledge of astronomy and physics to explain concepts or provide context, but you must not contradict the provided data. If a user asks for data that is marked as "Not Available", state that the information is not available from the source. Here is the verified data for the system:\n\n${profileString}`
             }]
         },
-        { role: 'model', parts: [{ text: "Understood. I will answer questions based only on the provided data for this system." }] },
+        { role: 'model', parts: [{ text: `Understood. I am ready to answer questions about TIC ${profile.TIC_ID} using the provided data as my primary context.` }] },
         ...history,
         { role: 'user', parts: [{ text: question }] }
     ];

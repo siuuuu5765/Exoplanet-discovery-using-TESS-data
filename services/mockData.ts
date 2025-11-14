@@ -26,16 +26,24 @@ export const generateMockVisuals = (profile: VerifiedSystemProfile) => {
     // Convert R_earth and R_sun to the same units (e.g., km) to calculate depth. 1 R_sun ~= 109 R_earth.
     const transitDepth = Math.pow(planetRadius / (starRadius * 109), 2) * 0.95; // Add slight noise
     const transitDurationHours = rng.nextRange(2, 4);
-    const transitEpoch = rng.nextRange(2458000, 2459000);
+    const transitEpoch = rng.nextRange(0, period * 24); // Epoch within the first cycle for simplicity
 
     const lightCurve: LightCurvePoint[] = [];
+    const totalDuration = 2000 * 0.2; // 400 hours of data
     for (let i = 0; i < 2000; i++) {
         const time = i * 0.2;
         let brightness = 1.0 + (rng.next() - 0.5) * 0.0005; // Base noise
-        const timeInCycle = (time - transitEpoch) % (period * 24);
-        if (timeInCycle > -transitDurationHours / 2 && timeInCycle < transitDurationHours / 2) {
+        
+        // Check if the current time point falls within any transit event
+        const timeSinceEpoch = time - transitEpoch;
+        const periodInHours = period * 24;
+        const phaseInHours = ((timeSinceEpoch % periodInHours) + periodInHours) % periodInHours;
+        const centeredPhase = phaseInHours > periodInHours / 2 ? phaseInHours - periodInHours : phaseInHours;
+
+        if (Math.abs(centeredPhase) <= transitDurationHours / 2) {
              brightness -= transitDepth;
         }
+
         lightCurve.push({ time, brightness });
     }
     
