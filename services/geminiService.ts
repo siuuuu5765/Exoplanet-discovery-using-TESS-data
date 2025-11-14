@@ -1,6 +1,41 @@
 // services/geminiService.ts
-import { GoogleGenAI, Type } from "@google/genai";
+// FIX: Import GenerateContentResponse to correctly type API call results.
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import type { VerifiedSystemProfile, ComparisonData, HabitabilityAnalysis, AtmosphericComposition } from '../types';
+
+// --- Retry Logic for API Calls ---
+const MAX_RETRIES = 3;
+
+/**
+ * A wrapper function that adds retry logic with exponential backoff to an API call.
+ * This is crucial for handling transient errors like 503 "model overloaded".
+ * @param apiCall The asynchronous function to execute.
+ * @returns The result of the API call.
+ */
+const withRetry = async <T>(apiCall: () => Promise<T>): Promise<T> => {
+    let lastError: Error | null = null;
+    for (let i = 0; i < MAX_RETRIES; i++) {
+        try {
+            return await apiCall();
+        } catch (error: any) {
+            lastError = error;
+            // Check for specific transient error messages from the Gemini API
+            if (error.message.includes('503') || error.message.includes('UNAVAILABLE') || error.message.toLowerCase().includes('overloaded')) {
+                // Exponential backoff with jitter to spread out retry attempts
+                const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                console.warn(`Attempt ${i + 1} failed with a transient error. Retrying in ${delay.toFixed(0)}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                // Not a retryable error, so we throw it immediately
+                throw error;
+            }
+        }
+    }
+    // If all retries fail, throw the last captured error
+    console.error("All retry attempts failed.");
+    throw lastError;
+};
+
 
 // Centralized function to create a new AI client instance.
 // This ensures we always use the latest API key from the environment.
@@ -49,7 +84,8 @@ export const generateAiAnalysis = async (
         Example for comparisonData: [{"parameter": "Radius (Earth=1)", "candidate": "1.6", "earth": "1", "jupiter": "11.2"}]
     `;
     
-    const response = await ai.models.generateContent({
+    // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
         model: model,
         contents: prompt,
         config: {
@@ -75,7 +111,7 @@ export const generateAiAnalysis = async (
                 required: ['aiAnalysis', 'comparisonData']
             }
         }
-    });
+    }));
     const text = response.text;
     if (!text) {
         throw new Error("AI response did not match the expected JSON format.");
@@ -192,7 +228,8 @@ export const generateAtmosphericComposition = async (profile: VerifiedSystemProf
         2. "rationale": A brief Markdown string explaining your reasoning based on the provided data (e.g., "Given the planet's high mass and low temperature, it likely retained a dense, hydrogen-dominated atmosphere...").
     `;
 
-    const response = await ai.models.generateContent({
+    // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
         model: model,
         contents: prompt,
         config: {
@@ -216,7 +253,7 @@ export const generateAtmosphericComposition = async (profile: VerifiedSystemProf
                 required: ['gases', 'rationale']
             }
         }
-    });
+    }));
     const text = response.text;
     if (!text) {
         throw new Error("AI response did not match the expected JSON format for atmospheric composition.");
@@ -250,7 +287,8 @@ export const generateResearchSummary = async (profile: VerifiedSystemProfile): P
 
         The response must be a single JSON object with one key: "summary" (string).
     `;
-    const response = await ai.models.generateContent({
+    // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
         model: model,
         contents: prompt,
         config: {
@@ -263,7 +301,7 @@ export const generateResearchSummary = async (profile: VerifiedSystemProfile): P
                 required: ['summary']
             }
         }
-    });
+    }));
     const text = response.text;
     if (!text) {
         throw new Error("Error generating research summary: AI response text is empty.");
@@ -281,13 +319,14 @@ export const getChatbotResponse = async (profile: VerifiedSystemProfile, history
 
     // The 'history' array from the component already contains the latest user message.
     // The 'question' parameter is redundant but we keep the function signature.
-    const response = await ai.models.generateContent({
+    // FIX: Add GenerateContentResponse type to the response variable to resolve type errors.
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
         model: model,
         contents: history as any,
         config: {
             systemInstruction: systemInstruction,
         },
-    });
+    }));
 
     if (!response.text) {
         throw new Error("I'm sorry, I encountered an error trying to process your question.");

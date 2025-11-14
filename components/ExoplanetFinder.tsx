@@ -109,8 +109,24 @@ const ExoplanetFinder: React.FC = () => {
             setActiveTab('overview');
 
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during analysis.';
-            // Simplified error message for API key issues.
+            let errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during analysis.';
+            
+            // Attempt to parse the error message for a more user-friendly format.
+            // This is useful for Gemini API errors which are often JSON strings.
+            try {
+                const potentialJson = errorMessage.substring(errorMessage.indexOf('{'));
+                const parsed = JSON.parse(potentialJson);
+
+                if (parsed?.error?.message) {
+                    errorMessage = parsed.error.message;
+                     if (parsed?.error?.status === 'UNAVAILABLE' || parsed?.error?.code === 503) {
+                         errorMessage = "The AI model is temporarily overloaded. After several attempts, we were unable to get a response. Please try again in a few moments.";
+                    }
+                }
+            } catch (parseError) {
+                // It's not a JSON error message, so we'll use the original string. This is fine.
+            }
+
             if (errorMessage.toLowerCase().includes('api key') || errorMessage.toLowerCase().includes('permission denied')) {
                 setError('A valid API key is not configured for this application. Please ensure the environment is set up correctly.');
             } else {
