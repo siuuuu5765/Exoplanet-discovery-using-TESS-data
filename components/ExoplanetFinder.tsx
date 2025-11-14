@@ -17,7 +17,7 @@ import BatchAnalysis from './BatchAnalysis';
 import BatchResultsTable from './BatchResultsTable';
 import BlsParameters from './BlsParameters';
 import BlsPowerSpectrumChart from './BlsPowerSpectrumChart';
-import HabitabilityCard from './HabitabilityCard';
+import HabitabilityAnalysisCard from './HabitabilityAnalysisCard';
 import AtmosphericCompositionCard from './ChemicalComposition';
 import ComparisonTable from './ComparisonTable';
 import ResearchSummary from './ResearchSummary';
@@ -98,8 +98,8 @@ const ExoplanetFinder: React.FC = () => {
             setAnalysisResult(finalResult);
             setActiveTab('overview');
 
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during analysis.';
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during analysis.';
             setError(errorMessage);
         } finally {
             setIsLoading(false);
@@ -220,7 +220,7 @@ const ExoplanetFinder: React.FC = () => {
                                         <ReactMarkdown>{analysisResult.aiAnalysis}</ReactMarkdown>
                                     </div>
                                     <div className="space-y-6">
-                                        <HabitabilityCard analysis={analysisResult.habitabilityAnalysis} />
+                                        <HabitabilityAnalysisCard analysis={analysisResult.habitabilityAnalysis} />
                                     </div>
                                 </div>
                                 

@@ -65,8 +65,15 @@ export interface ComparisonData {
 }
 
 export interface HabitabilityAnalysis {
-    score: number; // A score from 0 to 10
-    rationale: string;
+  Habitability_Score: number;
+  Components: {
+    Temperature_Score: number | 'Not Available';
+    Flux_Score: number | 'Not Available';
+    Size_Score: number | 'Not Available';
+    Gravity_Score: number | 'Not Available';
+    Orbit_Stability_Score: number | 'Not Available';
+  };
+  Interpretation: string;
 }
 
 export interface AtmosphericComposition {
